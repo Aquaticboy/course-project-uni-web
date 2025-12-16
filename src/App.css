@@ -1,5 +1,6 @@
 .App {
   text-align: center;
+  font-family: 'https://fonts.google.com/share?selection.family=Quicksand:wght@300..700';
 }
 
 .App-logo {
@@ -35,4 +36,17 @@
   to {
     transform: rotate(360deg);
   }
+}
+
+a {
+  margin: 5px;
+  padding: 5px;
+  background-color: #f3212f;
+  border-radius: 8px;
+  text-decoration: none;
+}
+
+.home-content{
+  margin: 5px;
+
 }
