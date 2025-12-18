@@ -15,7 +15,7 @@ const useFetch = (url) => {
         return res.json();
       })
       .then((data) => {
-        console.log("Data fetched: \n" + JSON.stringify(data, null, 2));
+        // console.log("Data fetched: \n" + JSON.stringify(data, null, 2));
         setData(data);
         setIsPending(false);
         setError(null);

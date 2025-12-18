@@ -1,14 +1,17 @@
-import './App.css';
+// import './App.css';
 import Navbar from './Navbar'
-import Home from './Home'
+import Home from './Pages/Home'
 import { BrowserRouter as Router, Route, Switch }  from 'react-router-dom';
-import Create from './Create';
-import BlogDetails from './BlogDetails';
-import NotFound from './NotFound';
+import Create from './Pages/Create';
+import NotFound from './Pages/NotFound';
+import MoviePage from './Pages/MoviePage';
 
 // Mantine UI
 import '@mantine/core/styles.css';
-import { createTheme, MantineProvider } from '@mantine/core';
+import '@mantine/carousel/styles.css';
+import { createTheme, MantineProvider, Container  } from '@mantine/core';
+import { HeaderSearch } from './MantineCompon/HeaderNavBar/HeaderSearch';
+import MovieDetailPage from './Pages/MoviePage';
 
 function App() {
 
@@ -18,9 +21,12 @@ function App() {
 
     <Router>
       <div className="App">
-        <Navbar />
+        {/* <Navbar /> */}
+        <HeaderSearch />
 
-        <div className="content">
+
+
+        <Container size="lg" mt="md">
           <Switch>
             <Route exact path="/">
               <Home />
@@ -28,14 +34,16 @@ function App() {
             <Route path="/create">
               <Create />
             </Route>
-            <Route path="/blogs/:id">
-              <BlogDetails />
+            <Route path="/moviePage/:id">
+              <MoviePage />
             </Route>
             <Route path="*">
               <NotFound />
             </Route>
           </Switch>
-        </div>
+        </Container>
+
+
       </div>
     </Router>
 
