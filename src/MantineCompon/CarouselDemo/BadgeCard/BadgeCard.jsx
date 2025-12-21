@@ -1,104 +1,98 @@
-import { IconStarFilled, IconClock } from '@tabler/icons-react';
+import { IconStarFilled, IconClock, IconCalendar } from '@tabler/icons-react';
 import {
   Badge,
   Card,
   Group,
   Image,
   Text,
+  AspectRatio,
 } from '@mantine/core';
 import classes from './BadgeCard.module.css';
 
 const BadgeCard = ({ film }) => {
   if (!film) return null;
 
+  // --- Підготовка даних (TMDB) ---
+  const releaseYear = film.release_date ? film.release_date.split('-')[0] : 'N/A';
+  const rating = film.vote_average ? film.vote_average.toFixed(1) : '0.0';
+  
+  // Беремо перші 2 жанри
+  const genres = film.genres ? film.genres.slice(0, 2) : [];
+
   return (
     <Card
-      key={film.imdbID}
-      withBorder
-      radius="md"
-      p="md"
-      // p={0}
+      // 1. Повертаємо звичайне посилання
       component="a"
-      href={`/moviePage/${film.imdbID}`}
+      // 2. Вказуємо шлях до сторінки фільму (використовуємо imdb_id)
+      href={`/moviePage/${film.id}`}
+      padding="md"
+      radius="md"
+      withBorder
       className={classes.card}
-      style={{
-        textDecoration: 'none',
-        transition: 'transform 0.2s ease, box-shadow 0.2s ease',
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.transform = 'translateY(-4px)';
-        e.currentTarget.style.boxShadow = '0 8px 16px rgba(0,0,0,0.1)';
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.transform = 'translateY(0)';
-        e.currentTarget.style.boxShadow = 'none';
-      }}
     >
-      {/* IMAGE */}
-      <Card.Section className={classes.imageWrapper}>
-        <Image
-          src={film.Poster}
-          alt={film.Title}
-          fallbackSrc="https://placehold.co/300x450?text=No+Image"
-          className={classes.image}
-        />
+      {/* КАРТИНКА */}
+      <Card.Section>
+        <AspectRatio ratio={2 / 3}>
+          <Image
+            src={film.poster_full_url}
+            alt={film.title}
+            fallbackSrc="https://placehold.co/300x450?text=No+Image"
+            className={classes.image}
+          />
+        </AspectRatio>
       </Card.Section>
 
-      {/* TITLE + META */}
-      <Card.Section className={classes.section}>
-        <Text
-          fz="md"
-          fw={700}
-          c="black"
-          className={classes.title}
-          lineClamp={2}
-        >
-          {film.Title}
+      {/* ОСНОВНА ІНФОРМАЦІЯ */}
+      <Card.Section className={classes.section} mt="md">
+        
+        {/* Назва */}
+        <Text fw={700} fz="lg" className={classes.title} lineClamp={1}>
+          {film.title}
         </Text>
 
-        <Group gap={6} mt={6}>
-          <Badge size="xs" variant="light" color="blue">
-            {film.Year}
+        {/* Інфо-рядок */}
+        <Group gap={8} mt={10} mb={10}>
+          {/* Рік */}
+          <Badge size="sm" variant="light" color="gray" leftSection={<IconCalendar size={10}/>}>
+            {releaseYear}
           </Badge>
 
-          <Badge
-            size="xs"
-            variant="filled"
+          {/* Рейтинг */}
+          <Badge 
+            size="sm" 
+            variant="filled" 
             color="yellow"
             leftSection={<IconStarFilled size={10} />}
           >
-            {film.imdbRating}
+            {rating}
           </Badge>
 
-          {film.Runtime && (
-            <Badge
-              size="xs"
-              variant="light"
-              color="gray"
-              leftSection={<IconClock size={10} />}
-            >
-              {film.Runtime}
+          {/* Тривалість */}
+          {film.runtime > 0 && (
+            <Badge size="sm" variant="outline" color="gray" leftSection={<IconClock size={10}/>}>
+              {film.runtime} хв
             </Badge>
           )}
         </Group>
+
+        {/* Опис (Overview) */}
+        <Text fz="xs" c="dimmed" lineClamp={2} mb="md">
+            {film.overview}
+        </Text>
       </Card.Section>
 
-      {/* GENRES */}
-      <Card.Section className={classes.section}>
-        <Group gap={4}>
-          {film.Genre &&
-            film.Genre.split(', ').slice(0, 2).map((genre) => (
-              <Badge
-                key={genre}
-                variant="outline"
-                color="gray"
-                size="xs"
-              >
-                {genre}
+      {/* ЖАНРИ (знизу) */}
+      {genres.length > 0 && (
+        <Card.Section className={classes.footer}>
+          <Group gap={5}>
+            {genres.map((g) => (
+              <Badge key={g.id} variant="default" size="xs" radius="sm">
+                {g.name}
               </Badge>
             ))}
-        </Group>
-      </Card.Section>
+          </Group>
+        </Card.Section>
+      )}
     </Card>
   );
 };

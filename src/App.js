@@ -1,10 +1,10 @@
 // import './App.css';
-import Navbar from './Navbar'
 import Home from './Pages/Home'
 import { BrowserRouter as Router, Route, Switch }  from 'react-router-dom';
 import Create from './Pages/Create';
 import NotFound from './Pages/NotFound';
 import MoviePage from './Pages/MoviePage';
+import ActorPage from './Pages/ActorPage';
 
 // Mantine UI
 import '@mantine/core/styles.css';
@@ -37,6 +37,9 @@ function App() {
             <Route path="/moviePage/:id">
               <MoviePage />
             </Route>
+            <Route path="/actor/:id">
+                <ActorPage />
+              </Route>
             <Route path="*">
               <NotFound />
             </Route>

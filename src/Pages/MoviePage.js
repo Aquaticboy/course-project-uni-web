@@ -1,128 +1,78 @@
-import React from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { 
-  Container, Grid, Image, Title, Text, Group, 
-  Badge, Stack, Button, Box, AspectRatio, Paper 
-} from '@mantine/core';
-import { IconStarFilled, IconPlayerPlay, IconArrowLeft, IconClock } from '@tabler/icons-react';
+import React from 'react'; // useRef більше не потрібен, прибираємо
+import { useParams } from 'react-router-dom';
+import { Container, Grid, Button, Box, Loader, Center, Title, Text } from '@mantine/core';
+import { useScrollIntoView } from '@mantine/hooks'; // 1. Імпортуємо хук
+import { IconArrowLeft } from '@tabler/icons-react';
 import useFetch from '../useFetch';
 
-const MoviePage = ({ data }) => {
-  // 1. Отримуємо ID з URL (наприклад, з /movie/tt0133093)
+import MovieHero from '../MantineCompon/MoviePage/MovieHero';
+import MovieTabs from '../MantineCompon/MoviePage/MovieTabs';
+import MovieSidebar from '../MantineCompon/MoviePage/MovieSidebar';
+import SimilarMovies from '../MantineCompon/MoviePage/SimilarMovies';
+import MoviePlayer from '../MantineCompon/MoviePage/MoviePlayer';
+
+const MoviePage = () => {
   const { id } = useParams();
+  const { data: film, error, isPending } = useFetch(`http://localhost:3001/movieInfoByID/${id}`);
+  
+  // 2. Налаштовуємо хук для плавної прокрутки
+  const { scrollIntoView, targetRef } = useScrollIntoView({
+    offset: 20,      // Відступ зверху (щоб плеєр не прилипав до самого краю екрану)
+    duration: 1200,  // Час прокрутки в мс (1.2 секунди) — чим більше, тим повільніше
+    easing: (t) => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t, // (Опціонально) Плавне прискорення/гальмування
+  });
 
-  const { data: film, error, isLoading } = useFetch(`/getMovieDetails/${id}`);
-  console.log("MoviePage.js film data: \n" + JSON.stringify(film, null, 2));
-
-  // 3. Якщо фільм не знайдено (наприклад, при перезавантаженні або помилці)
-  if (!film) {
+  if (isPending) {
+    return (
+      <Center h="100vh">
+        <Loader size="xl" variant="bars" />
+      </Center>
+    );
+  }
+  
+  if (error || !film) {
     return (
       <Container py="xl" ta="center">
-        <Title order={2}>Фільм не знайдено</Title>
-        <Button component={Link} to="/" mt="md" leftSection={<IconArrowLeft size={16} />}>
-          Повернутися на головну
-        </Button>
+        <Title order={2}>Дані відсутні</Title>
+        <Text c="dimmed" mb="md">Не вдалося знайти інформацію про цей фільм.</Text>
+        <Button component="a" href="/" leftSection={<IconArrowLeft />}>На головну</Button>
       </Container>
     );
   }
 
   return (
-    <Box pb="xl">
-      {/* HERO SECTION: Великий банер з градієнтом */}
-      <Box 
-        style={{ 
-          position: 'relative', 
-          minHeight: '500px', 
-          backgroundColor: '#1a1b1e',
-          backgroundImage: `linear-gradient(to right, rgba(0,0,0,0.9) 30%, rgba(0,0,0,0.4) 100%), url(${film.Poster})`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center top',
-          display: 'flex',
-          alignItems: 'center',
-          color: 'white'
-        }}
-      >
-        <Container size="xl" w="100%">
-          <Stack gap="md" maw={650}>
-            <Button 
-              component={Link} 
-              to="/" 
-              variant="subtle" 
-              color="gray.0" 
-              leftSection={<IconArrowLeft size={16} />}
-              w="fit-content"
-              pl={0}
-            >
-              Назад до списку
-            </Button>
+    <Box pb={80} bg="gray.0">
+      
+      {/* 3. Передаємо функцію scrollIntoView (яка прийшла з хука) */}
+      <MovieHero 
+        film={film} 
+        onTrailerClick={() => scrollIntoView({ alignment: 'start' })} 
+      />
 
-            <Title order={1} fz={{ base: 32, md: 48 }} lh={1.1}>
-              {film.Title}
-            </Title>
-            
-            <Group gap="xs">
-              <Badge color="yellow" variant="filled" size="lg" leftSection={<IconStarFilled size={14}/>}>
-                {film.imdbRating}
-              </Badge>
-              <Text fw={500} c="gray.3">
-                {film.Year} • {film.Runtime} • {film.Genre}
-              </Text>
-            </Group>
-
-            <Text fz="lg" c="gray.4" style={{ lineHeight: 1.6 }}>
-              {film.Plot}
-            </Text>
-
-            <Group mt="lg">
-              <Button leftSection={<IconPlayerPlay size={20} />} size="lg" radius="md" color="blue">
-                Дивитися трейлер
-              </Button>
-            </Group>
-          </Stack>
-        </Container>
-      </Box>
-
-      {/* ДЕТАЛЬНА ІНФОРМАЦІЯ */}
-      <Container size="xl" mt={40}>
+      <Container size="xl" mt={80}>
         <Grid gutter={40}>
-          {/* Трейлер (заглушка) */}
-          <Grid.Col span={{ base: 12, md: 7 }}>
-            <Title order={3} mb="md">Трейлер фільму</Title>
-            <Paper radius="md" withBorder style={{ overflow: 'hidden' }}>
-              <AspectRatio ratio={16 / 9}>
-                <iframe
-                  src="https://www.youtube.com/embed/dQw4w9WgXcQ" 
-                  title="Trailer"
-                  frameBorder="0"
-                  allowFullScreen
-                />
-              </AspectRatio>
-            </Paper>
+          <Grid.Col span={{ base: 12, lg: 8 }}>
+            <MovieTabs film={film} />
           </Grid.Col>
 
-          {/* Характеристики */}
-          <Grid.Col span={{ base: 12, md: 5 }}>
-            <Title order={3} mb="md">Про фільм</Title>
-            <Stack gap="xs">
-              <InfoBox label="Режисер" value={film.Director} />
-              <InfoBox label="Актори" value={film.Actors} />
-              <InfoBox label="Країна" value={film.Country} />
-              <InfoBox label="Нагороди" value={film.Awards} />
-              <InfoBox label="Рейтинг" value={film.Rated} />
-            </Stack>
+          <Grid.Col span={{ base: 12, lg: 4 }}>
+             <MovieSidebar film={film} />
           </Grid.Col>
         </Grid>
+
+        {/* 4. Прив'язуємо targetRef до блоку з трейлером */}
+        <Box mt={60} ref={targetRef}>
+            <Title order={3} mb="md">Офіційний трейлер</Title>
+            <MoviePlayer 
+                videos={film.videos} 
+                poster={film.backdrop_full_url || film.poster_full_url} 
+            />
+        </Box>
+
+        <SimilarMovies similar={film.similar} />
       </Container>
     </Box>
   );
 };
-
-// Маленький компонент для рядків інформації
-const InfoBox = ({ label, value }) => (
-  <Box py="xs" style={{ borderBottom: '1px solid #e9ecef' }}>
-    <Text fz="xs" c="dimmed" tt="uppercase" fw={700}>{label}</Text>
-    <Text fz="sm" fw={500}>{value}</Text>
-  </Box>
-);
 
 export default MoviePage;

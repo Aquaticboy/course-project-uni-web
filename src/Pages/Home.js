@@ -1,22 +1,34 @@
-import BlogList from './BlogList'
 import useFetch from "../useFetch";
 import Demo from '../MantineCompon/CarouselDemo/Demo';
-
-
+import { Loader, Center, Alert } from '@mantine/core';
 
 const Home = () => {
+    // 1. Отримуємо СПИСОК фільмів для слайдера
+    const { 
+        data: movies, 
+        isPending, 
+        error 
+    } = useFetch('http://localhost:3001/getFeaturedMovies');
 
-
-    const { data, isPending, error } = useFetch('http://localhost:3001/getFeaturedMovies');
-    // console.log("Home.js data: \n" + JSON.stringify(data, null, 2));
+    // Лог для перевірки
+    if(movies) console.log("Loaded movies:", movies);
 
     return ( 
         <div className="home-content">
-            { // or, if we want to store Error message in variable:
-            error && <div>{error}</div> }
+            {error && (
+                <Alert color="red" title="Помилка завантаження">
+                    {error}
+                </Alert>
+            )}
             
-            {isPending && <div>Loading films...</div>}
-            {data && <Demo data={data}/>}
+            {isPending && (
+                <Center h={300}>
+                    <Loader size="xl" />
+                </Center>
+            )}
+
+            {/* Відображаємо карусель тільки коли є дані */}
+            {movies && <Demo data={movies}/>}
         </div>
      );
 }
