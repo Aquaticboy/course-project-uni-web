@@ -7,7 +7,6 @@ const Demo = ({ data }) => {
 
   return (
     <Box px="xl" py="md">
-      <Title order={3} align="left" mb="md">Топ фільмів</Title>
       
       <Carousel
         height="100%"
@@ -33,7 +32,6 @@ const Demo = ({ data }) => {
         }}
       >
         {data.map((film) => (
-          // ВАЖЛИВО: Використовуємо film.id (від TMDB), бо film.imdbID більше не існує в цьому об'єкті
           <Carousel.Slide key={film.id}>
             <BadgeCard film={film} />
           </Carousel.Slide>

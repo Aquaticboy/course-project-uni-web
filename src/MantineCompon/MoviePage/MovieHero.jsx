@@ -1,9 +1,12 @@
 import React from 'react';
+import { useHistory } from 'react-router-dom'; // 1. Додаємо цей імпорт
 import { Box, Container, Button, Grid, Paper, AspectRatio, Image, Stack, Text, Title, Group, RingProgress, Divider, Badge } from '@mantine/core';
 import { IconArrowLeft, IconCalendar, IconClock, IconPlayerPlay } from '@tabler/icons-react';
 
-// Приймаємо onTrailerClick
 const MovieHero = ({ film, onTrailerClick }) => {
+  // 2. Ініціалізуємо історію
+  const history = useHistory();
+
   const releaseYear = film.release_date ? film.release_date.split('-')[0] : 'N/A';
   const hours = Math.floor(film.runtime / 60);
   const minutes = film.runtime % 60;
@@ -25,11 +28,23 @@ const MovieHero = ({ film, onTrailerClick }) => {
       }}
     >
       <Container size="xl" w="100%" style={{ zIndex: 2, color: 'white' }}>
-        <Button component="a" href="/" variant="white" color="dark" leftSection={<IconArrowLeft size={16} />} style={{ position: 'absolute', top: 30, left: 30 }}>
+        
+        {/* 3. ЗМІНЮЄМО КНОПКУ "НАЗАД" */}
+        <Button 
+          // component="a" // ВИДАЛЯЄМО ЦЕ (бо це не просто лінк)
+          // href="/"      // ВИДАЛЯЄМО ЦЕ
+          onClick={() => history.goBack()} // ДОДАЄМО ЦЕ
+          
+          variant="white" 
+          color="dark" 
+          leftSection={<IconArrowLeft size={16} />} 
+          style={{ position: 'absolute', top: 30, left: 30 }}
+        >
           Назад
         </Button>
 
         <Grid gutter={50} align="flex-end">
+          {/* ... далі код без змін ... */}
           <Grid.Col span={{ base: 12, md: 3 }} visibleFrom="sm">
             <Paper shadow="xl" radius="md" style={{ overflow: 'hidden', border: '4px solid white', transform: 'translateY(60px)' }}>
               <AspectRatio ratio={2/3}>
@@ -77,7 +92,6 @@ const MovieHero = ({ film, onTrailerClick }) => {
 
               {trailer && (
                  <Button 
-                   // ВАЖЛИВО: Замість посилання на YouTube, тепер викликаємо скрол
                    onClick={onTrailerClick}
                    variant="gradient" gradient={{ from: 'red', to: 'orange' }}
                    size="lg" radius="md" mt="lg" w="fit-content"
