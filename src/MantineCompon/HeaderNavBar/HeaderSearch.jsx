@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useHistory } from 'react-router-dom'; // Використовуємо useHistory (v5)
+import { useHistory } from 'react-router-dom'; 
 import { IconSearch } from '@tabler/icons-react';
 import {
   Autocomplete,
@@ -9,12 +9,13 @@ import {
   Stack,
   Image,
   ActionIcon,
-  rem
+  rem,
+  Center // Додав Center для вирівнювання в мобільному меню
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import classes from './HeaderSearch.module.css';
+import ColorSchemeToggle from './ColorSchemeToggle'; // Імпорт вже є, це добре
 
-// Шлях до твого логотипу
 import lagoonLogo from '../../images/LagoonLogoWhite-removebg.png';
 
 const links = [
@@ -55,7 +56,7 @@ export function HeaderSearch() {
 
   return (
     <>
-      {/* ===== MOBILE DRAWER ===== */}
+      {/* ===== MOBILE DRAWER (Мобільне меню) ===== */}
       <Drawer
         opened={opened}
         onClose={close}
@@ -93,10 +94,16 @@ export function HeaderSearch() {
             }
           />
           {items}
+
+          {/* <--- ДОДАНО: Перемикач теми для мобільних (внизу списку) */}
+          <Center mt="xl" style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '20px' }}>
+             <ColorSchemeToggle />
+          </Center>
+
         </Stack>
       </Drawer>
 
-      {/* ===== HEADER ===== */}
+      {/* ===== HEADER (Десктоп) ===== */}
       <header className={classes.header}>
         <div className={classes.inner}>
           <Group>
@@ -108,15 +115,14 @@ export function HeaderSearch() {
               color="white" 
             />
             
-            {/* Логотип з посиланням на головну */}
             <a href="/" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
                 <Image 
                     src={lagoonLogo} 
-                    h={35} // Оптимальна висота
+                    h={35} 
                     w="auto" 
                     fit="contain"
                     alt="Lagoon Logo"
-                    className={classes.logo} // <--- ТУТ ЗАСТОСОВУЄТЬСЯ ІНВЕРСІЯ КОЛЬОРУ
+                    className={classes.logo}
                 />
             </a>
           </Group>
@@ -126,7 +132,7 @@ export function HeaderSearch() {
               {items}
             </Group>
 
-            {/* Пошук (Desktop) */}
+            {/* Пошук */}
             <Autocomplete
               className={classes.search}
               placeholder="Пошук фільму..."
@@ -137,17 +143,16 @@ export function HeaderSearch() {
               onChange={setSearchValue}
               onKeyDown={handleKeyDown}
               visibleFrom="xs"
-              // Стилізація самого інпуту всередині Mantine компонента
               styles={{
                 input: {
-                    backgroundColor: 'rgba(255, 255, 255, 0.05)', // Ледь помітний фон
+                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
                     border: '1px solid rgba(255, 255, 255, 0.1)',
                     color: 'white',
                     transition: 'all 0.3s ease',
                     '&:focus': {
                         backgroundColor: 'rgba(255, 255, 255, 0.15)',
                         borderColor: 'rgba(255, 255, 255, 0.3)',
-                        width: '280px' // Ефект розширення при кліку
+                        width: '280px'
                     },
                     '&::placeholder': {
                         color: 'rgba(255, 255, 255, 0.4)'
@@ -162,6 +167,10 @@ export function HeaderSearch() {
                  )
               }
             />
+
+            {/* <--- ДОДАНО: Перемикач теми для десктопу (справа від пошуку) */}
+            <ColorSchemeToggle />
+            
           </Group>
         </div>
       </header>

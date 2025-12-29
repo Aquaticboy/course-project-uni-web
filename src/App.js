@@ -7,6 +7,7 @@ import ActorPage from "./Pages/ActorPage";
 import MovieSearch from "./Pages/MovieSearch";
 import BookPageOL from "./Pages/BookPageOL";
 import BookSearch from "./Pages/BookSearch";
+import Footer from "./MantineCompon/Footer/Footer";
 
 // Mantine UI
 import "@mantine/core/styles.css";
@@ -15,9 +16,18 @@ import { createTheme, MantineProvider, Container } from "@mantine/core";
 import { HeaderSearch } from "./MantineCompon/HeaderNavBar/HeaderSearch";
 import BookPage from "./Pages/BookPage";
 
+const theme = createTheme({
+  primaryColor: 'orange', 
+  
+  fontFamily: 'Verdana, sans-serif',
+  headings: { fontFamily: 'Georgia, serif' },
+
+  defaultRadius: 'md', 
+});
+
 function App() {
   return (
-    <MantineProvider>
+    <MantineProvider theme={theme} defaultColorScheme="light">
       <Router>
         <div className="App">
           {/* <Navbar /> */}
@@ -53,6 +63,8 @@ function App() {
               </Route>
             </Switch>
           </Container>
+
+          <Footer />
         </div>
       </Router>
     </MantineProvider>
