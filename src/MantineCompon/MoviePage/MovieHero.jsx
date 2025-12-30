@@ -1,7 +1,9 @@
 import React from 'react';
 import { useHistory } from 'react-router-dom';
 import { Box, Container, Button, Grid, Paper, AspectRatio, Image, Stack, Text, Title, Group, RingProgress, Divider, Badge } from '@mantine/core';
-import { IconArrowLeft, IconCalendar, IconClock, IconPlayerPlay } from '@tabler/icons-react';
+import { IconArrowLeft, IconCalendar, IconClock, IconPlayerPlay, IconPlayerPlayFilled } from '@tabler/icons-react';
+
+import BookmarkButton from '../BookmarkButton/BookmarkButton'; // Переконайся, що шлях правильний
 
 const MovieHero = ({ film, onTrailerClick }) => {
   const history = useHistory();
@@ -99,16 +101,23 @@ const MovieHero = ({ film, onTrailerClick }) => {
                 ))}
               </Group>
 
-              {trailer && (
-                 <Button 
-                   onClick={onTrailerClick}
-                   variant="gradient" gradient={{ from: 'red', to: 'orange' }}
-                   size="lg" radius="md" mt="lg" w="fit-content"
-                   leftSection={<IconPlayerPlay />}
-                 >
-                   Дивитися трейлер
-                 </Button>
-              )}
+{/* КНОПКИ ДІЙ */}
+                    <Group mt="xl">
+                        <Button 
+                            size="lg" 
+                            radius="xl" 
+                            color="orange" 
+                            leftSection={<IconPlayerPlayFilled size={20} />}
+                            onClick={onTrailerClick}
+                            variant="filled"
+                            styles={{ root: { boxShadow: '0 4px 15px rgba(255, 128, 0, 0.4)' } }}
+                        >
+                            Дивитися трейлер
+                        </Button>
+
+                        {/* --- КНОПКА ЗАКЛАДОК (САМЕ ТУТ) --- */}
+                        <BookmarkButton item={film} type="movie" />
+                    </Group>
             </Stack>
           </Grid.Col>
         </Grid>

@@ -1,20 +1,32 @@
 // import './App.css';
+import React from 'react';
+import { BrowserRouter as Router, Route, Switch, useLocation } from "react-router-dom"; // 1. Додали useLocation
+
+// Pages
 import Home from "./Pages/Home";
-import { BrowserRouter as Router, Route, Switch } from "react-router-dom";
 import NotFound from "./Pages/NotFound";
 import MoviePage from "./Pages/MoviePage";
 import ActorPage from "./Pages/ActorPage";
 import MovieSearch from "./Pages/MovieSearch";
 import BookPageOL from "./Pages/BookPageOL";
 import BookSearch from "./Pages/BookSearch";
+import BookPage from "./Pages/BookPage";
+import AuthPage from './Pages/AuthPage';
+import { AuthProvider } from './Context/AuthContext';
+import ProfilePage from './Pages/ProfilePage';
+import SettingsPage from './Pages/SettingsPage';
+import UserProfilePage from './Pages/UserProfilePage';
+import FriendsPage from './Pages/FriendsPage';
+import AdminPage from './Pages/AdminPage';
+
+// Components
 import Footer from "./MantineCompon/Footer/Footer";
+import { HeaderSearch } from "./MantineCompon/HeaderNavBar/HeaderSearch";
 
 // Mantine UI
 import "@mantine/core/styles.css";
 import "@mantine/carousel/styles.css";
 import { createTheme, MantineProvider, Container } from "@mantine/core";
-import { HeaderSearch } from "./MantineCompon/HeaderNavBar/HeaderSearch";
-import BookPage from "./Pages/BookPage";
 
 const theme = createTheme({
   primaryColor: 'orange', 
@@ -23,67 +35,100 @@ const theme = createTheme({
   defaultRadius: 'md', 
 });
 
+// Створюємо внутрішній компонент, щоб мати доступ до useLocation
+function AppContent() {
+  const location = useLocation();
+  
+  // Перевіряємо, чи ми на сторінці авторизації
+  const isAuthPage = location.pathname === '/auth';
+
+  return (
+    <div className="App">
+      {!isAuthPage && <HeaderSearch />}
+
+      <Switch>
+        <Route exact path="/">
+          <Home />
+        </Route>
+
+        <Route path="/auth">
+           <AuthPage />
+        </Route>
+
+        <Route>
+          <Container size="lg" mt="md">
+            <Switch>
+              <Route path="/MovieSearch">
+                <MovieSearch />
+              </Route>
+              
+              <Route path="/movieInfoByID/:id"> 
+                <MoviePage />
+              </Route>
+
+              <Route path="/moviePage/:id">
+                <MoviePage />
+              </Route>
+
+              <Route path="/actor/:id">
+                <ActorPage />
+              </Route>
+              
+              <Route path="/BookSearch">
+                <BookSearch />
+              </Route>
+              
+              <Route path="/bookInfo/:id">
+                <BookPage />
+              </Route>
+
+              <Route path="/bookInfoOL/:id">
+                <BookPageOL />
+              </Route>
+
+              <Route path="/profile">
+                <ProfilePage />
+              </Route>
+
+              <Route path="/settings">
+                <SettingsPage />
+              </Route>
+
+              <Route path="/user/:id">
+                <UserProfilePage />
+              </Route>
+
+              <Route path="/friends">
+                <FriendsPage />
+              </Route>
+
+              <Route path="/admin">
+                <AdminPage />
+              </Route>
+
+              {/* Сторінка 404 має бути в кінці списку Switch всередині контейнера */}
+              <Route path="*">
+                <NotFound />
+              </Route>
+            </Switch>
+          </Container>
+        </Route>
+      </Switch>
+
+      {/* 5. Футер показуємо, ТІЛЬКИ якщо це НЕ сторінка авторизації */}
+      {!isAuthPage && <Footer />}
+    </div>
+  );
+}
+
 function App() {
   return (
     <MantineProvider theme={theme} defaultColorScheme="light">
-      <Router>
-        <div className="App">
-          {/* 1. Header залишається на всю ширину (без Container) */}
-          <HeaderSearch />
-
-          <Switch>
-            {/* 2. HOME PAGE - Рендериться БЕЗ контейнера (на всю ширину) */}
-            <Route exact path="/">
-              <Home />
-            </Route>
-
-            {/* 3. ВСІ ІНШІ СТОРІНКИ - Обгорнуті в Container */}
-            <Route>
-              <Container size="lg" mt="md">
-                <Switch>
-                  <Route path="/MovieSearch">
-                    <MovieSearch />
-                  </Route>
-                  
-                  {/* Виправив шлях: було /moviePage/:id, а в Home ми посилаємось на /movieInfoByID/:id */}
-                  {/* Якщо у тебе в Home.js посилання /movieInfoByID, то тут теж має бути так. */}
-                  {/* Я залишаю як було в твоєму старому App.js, але зверни на це увагу */}
-                  <Route path="/movieInfoByID/:id"> 
-                    <MoviePage />
-                  </Route>
-                  {/* Старий варіант про всяк випадок: */}
-                  <Route path="/moviePage/:id">
-                    <MoviePage />
-                  </Route>
-
-                  <Route path="/actor/:id">
-                    <ActorPage />
-                  </Route>
-                  
-                  <Route path="/BookSearch">
-                    <BookSearch />
-                  </Route>
-                  
-                  <Route path="/bookInfo/:id">
-                    <BookPage />
-                  </Route>
-
-                  <Route path="/bookInfoOL/:id">
-                    <BookPageOL />
-                  </Route>
-
-                  <Route path="*">
-                    <NotFound />
-                  </Route>
-                </Switch>
-              </Container>
-            </Route>
-          </Switch>
-
-          {/* 4. Footer залишається на всю ширину (без Container) */}
-          <Footer />
-        </div>
-      </Router>
+      <AuthProvider>
+        <Router>
+          <AppContent />
+        </Router>
+      </AuthProvider>
     </MantineProvider>
   );
 }

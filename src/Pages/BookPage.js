@@ -8,6 +8,10 @@ import {
 } from '@tabler/icons-react';
 import useFetch from '../useFetch';
 
+import BookmarkButton from '../MantineCompon/BookmarkButton/BookmarkButton';
+// 1. ІМПОРТУЄМО КОМЕНТАРІ
+import CommentsSection from '../MantineCompon/Comments/CommentsSection';
+
 const BookPage = () => {
     const { id } = useParams();
     const history = useHistory();
@@ -56,10 +60,16 @@ const BookPage = () => {
         border: isDark ? '1px solid rgba(255, 255, 255, 0.05)' : '1px solid #e9ecef',
     };
 
+    // АДАПТАЦІЯ ОБ'ЄКТА ДЛЯ ЗАКЛАДОК
+    const bookmarkItem = {
+        ...book,
+        poster_path: book.poster_full 
+    };
+
     return (
         <Box pb={80} style={{ minHeight: '100vh', position: 'relative', overflow: 'hidden' }}>
             
-            {/* 1. ФОНОВЕ СВІТІННЯ (GLOW) */}
+            {/* ФОНОВЕ СВІТІННЯ (GLOW) */}
             {isDark && (
                 <div style={{
                     position: 'absolute', top: '-100px', left: '50%', transform: 'translateX(-50%)',
@@ -181,9 +191,12 @@ const BookPage = () => {
                     {/* --- ПРАВА КОЛОНКА (ОПИС) --- */}
                     <Grid.Col span={{ base: 12, md: 8, lg: 9 }}>
                         <Stack gap="xs" mb="xl">
-                            <Title order={1} c="var(--mantine-color-text)" style={{ fontSize: '2.5rem' }}>
-                                {book.title}
-                            </Title>
+                            <Group justify="space-between" align="flex-start" wrap="nowrap">
+                                <Title order={1} c="var(--mantine-color-text)" style={{ fontSize: '2.5rem' }}>
+                                    {book.title}
+                                </Title>
+                                <BookmarkButton item={bookmarkItem} type="book" />
+                            </Group>
                             
                             {book.subtitle && (
                                 <Text size="xl" c="dimmed" fs="italic">
@@ -228,13 +241,18 @@ const BookPage = () => {
                                     c="var(--mantine-color-text)" 
                                     style={{ textAlign: 'justify', whiteSpace: 'pre-line' }}
                                 >
-                                    {/* Видаляємо HTML теги, якщо вони приходять з API */}
                                     {book.description?.replace(/<[^>]*>?/gm, '') || "Опис відсутній."}
                                 </Text>
                             </Spoiler>
                         </Paper>
                     </Grid.Col>
                 </Grid>
+
+                {/* 2. ДОДАЄМО БЛОК КОМЕНТАРІВ */}
+                <Box mt={80}>
+                     <CommentsSection contentId={id} contentType="book" />
+                </Box>
+
             </Container>
         </Box>
     );

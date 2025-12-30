@@ -4,10 +4,14 @@ import Database from "better-sqlite3";
 import dotenv from 'dotenv';
 import path from "path";
 import { fileURLToPath } from 'url';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+
 
 // Loading API key
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const JWT_SECRET = process.env.JWT_SECRET || "my_super_secret_temporary_key_123";
 
 dotenv.config({ path: path.join(__dirname, '.env') });
 const apiKey = process.env.IMDB_API_KEY;
@@ -24,7 +28,424 @@ app.use(express.json());
 // Initialize SQLite database connection
 const db = new Database("./database/database.db"); // path to SQLite file
 
+// Middleware для захисту роутів (перевіряє токен)
+const authenticateToken = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1]; // "Bearer TOKEN"
 
+  if (!token) return res.status(401).json({ error: 'Access denied' });
+
+  jwt.verify(token, JWT_SECRET, (err, user) => {
+    if (err) return res.status(403).json({ error: 'Invalid token' });
+    req.user = user;
+    next();
+  });
+};
+
+
+
+// Middleware: Перевірка, чи юзер є адміном (ОГОЛОШУЄМО ТІЛЬКИ ТУТ)
+const checkAdmin = (req, res, next) => {
+    // Перевіряємо, чи є роль і чи вона admin
+    if (!req.user || req.user.role !== 'admin') {
+        return res.status(403).json({ error: 'Access denied. Admins only.' });
+    }
+    next();
+};
+
+
+// ==================================================================
+// AUTH ROUTES
+// ==================================================================
+
+// Проста регулярка для перевірки пошти
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// 1. РЕЄСТРАЦІЯ
+app.post('/auth/register', async (req, res) => {
+  try {
+    const { name, email, password } = req.body;
+    
+    if (!name || !email || !password) {
+        return res.status(400).json({ error: 'Всі поля обов’язкові' });
+    }
+
+    // --- НОВА ПЕРЕВІРКА: ВАЛІДАЦІЯ ПОШТИ ---
+    if (!EMAIL_REGEX.test(email)) {
+        return res.status(400).json({ error: 'Введіть коректну електронну пошту (наприклад: user@example.com)' });
+    }
+
+    // Хешуємо пароль
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Записуємо в БД
+    const stmt = db.prepare("INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)");
+    const info = stmt.run(name, email, hashedPassword);
+
+    const token = jwt.sign({ id: info.lastInsertRowid, email }, JWT_SECRET, { expiresIn: '30d' });
+
+    res.json({ 
+        token, 
+        user: { id: info.lastInsertRowid, username: name, email } 
+    });
+
+  } catch (err) {
+    if (err.code === 'SQLITE_CONSTRAINT_UNIQUE') {
+      if (err.message.includes('users.username')) {
+          return res.status(400).json({ error: 'Це ім\'я користувача вже зайняте' });
+      }
+      if (err.message.includes('users.email')) {
+          return res.status(400).json({ error: 'Цей Email вже зареєстрований' });
+      }
+      return res.status(400).json({ error: 'Користувач з таким Email або іменем вже існує' });
+    }
+    console.error(err);
+    res.status(500).json({ error: 'Помилка сервера' });
+  }
+});
+// 2. ВХІД (LOGIN)
+app.post('/auth/login', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    
+    // Шукаємо по username
+    const user = db.prepare("SELECT * FROM users WHERE username = ?").get(username);
+    
+    if (!user) return res.status(400).json({ error: 'Користувача з таким логіном не знайдено' });
+
+    const isMatch = await bcrypt.compare(password, user.password_hash);
+    if (!isMatch) return res.status(400).json({ error: 'Невірний пароль' });
+
+    // Генеруємо токен (можна додати сюди role, щоб рідше лазити в БД)
+    const token = jwt.sign(
+        { id: user.id, role: user.role }, 
+        JWT_SECRET, 
+        { expiresIn: '30d' }
+    );
+
+    res.json({ 
+      token, 
+      user: { 
+          id: user.id, 
+          username: user.username, 
+          email: user.email, 
+          avatar: user.avatar_url,
+          role: user.role
+      } 
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Помилка сервера' });
+  }
+});
+
+// 3. ОТРИМАТИ СВОЇ ДАНІ (При оновленні сторінки)
+app.get('/auth/me', authenticateToken, (req, res) => {
+  try {
+    // ВАЖЛИВО: Додаємо avatar_url та role у вибірку
+    const user = db.prepare("SELECT id, username, email, avatar_url, role FROM users WHERE id = ?").get(req.user.id);
+    
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    
+    // Формуємо об'єкт для фронтенда
+    res.json({
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        avatar: user.avatar_url, // Мапимо avatar_url -> avatar
+        role: user.role          // <--- Щоб не губилися права після F5
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+
+// ==================================================================
+// BOOKMARKS (ЗАКЛАДКИ)
+// ==================================================================
+
+// 2. ДОДАТИ В ЗАКЛАДКИ
+app.post('/bookmarks', authenticateToken, (req, res) => {
+    try {
+        const { content_type, content_id, title, poster_path } = req.body;
+        const user_id = req.user.id;
+
+        const stmt = db.prepare(`
+            INSERT INTO bookmarks (user_id, content_type, content_id, title, poster_path)
+            VALUES (?, ?, ?, ?, ?)
+        `);
+        
+        stmt.run(user_id, content_type, String(content_id), title, poster_path);
+        res.json({ message: 'Added to bookmarks' });
+
+    } catch (err) {
+        if (err.code === 'SQLITE_CONSTRAINT_UNIQUE') {
+            return res.status(400).json({ error: 'Вже у вибраному' });
+        }
+        console.error(err);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// 3. ВИДАЛИТИ З ЗАКЛАДОК
+app.delete('/bookmarks/:type/:id', authenticateToken, (req, res) => {
+    try {
+        const { type, id } = req.params;
+        const user_id = req.user.id;
+
+        const stmt = db.prepare("DELETE FROM bookmarks WHERE user_id = ? AND content_type = ? AND content_id = ?");
+        const result = stmt.run(user_id, type, String(id));
+
+        if (result.changes === 0) return res.status(404).json({ error: 'Bookmark not found' });
+        
+        res.json({ message: 'Removed from bookmarks' });
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// 4. ПЕРЕВІРИТИ, ЧИ Є В ЗАКЛАДКАХ (Для зафарбовування сердечка)
+app.get('/bookmarks/check/:type/:id', authenticateToken, (req, res) => {
+    try {
+        const { type, id } = req.params;
+        const user_id = req.user.id;
+
+        const bookmark = db.prepare("SELECT id FROM bookmarks WHERE user_id = ? AND content_type = ? AND content_id = ?")
+                           .get(user_id, type, String(id));
+
+        res.json({ isBookmarked: !!bookmark }); // Повертає true або false
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// 5. ОТРИМАТИ ВСІ ЗАКЛАДКИ КОРИСТУВАЧА (Для профілю)
+app.get('/bookmarks', authenticateToken, (req, res) => {
+    try {
+        const user_id = req.user.id;
+        const bookmarks = db.prepare("SELECT * FROM bookmarks WHERE user_id = ? ORDER BY created_at DESC").all(user_id);
+        res.json(bookmarks);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+
+
+
+// ==================================================================
+// COMMENTS (КОМЕНТАРІ)
+// ==================================================================
+
+
+// 2. ОТРИМАТИ КОМЕНТАРІ (з даними користувача)
+app.get('/comments/:type/:id', (req, res) => {
+    try {
+        const { type, id } = req.params;
+        // Робимо JOIN, щоб одразу отримати ім'я та аватарку автора коментаря
+        const comments = db.prepare(`
+            SELECT comments.*, users.username, users.avatar_url 
+            FROM comments 
+            JOIN users ON comments.user_id = users.id
+            WHERE content_type = ? AND content_id = ?
+            ORDER BY created_at DESC
+        `).all(type, String(id));
+        
+        res.json(comments);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// 3. ДОДАТИ КОМЕНТАР
+app.post('/comments', authenticateToken, (req, res) => {
+    try {
+        const { content_type, content_id, text } = req.body;
+        const user_id = req.user.id;
+
+        if (!text || !text.trim()) return res.status(400).json({ error: 'Коментар не може бути пустим' });
+
+        const stmt = db.prepare("INSERT INTO comments (user_id, content_type, content_id, text) VALUES (?, ?, ?, ?)");
+        const info = stmt.run(user_id, content_type, String(content_id), text);
+
+        // Повертаємо створений коментар (щоб одразу показати на фронті без перезавантаження)
+        res.json({ 
+            id: info.lastInsertRowid, 
+            user_id, 
+            content_type, 
+            content_id, 
+            text, 
+            created_at: new Date().toISOString() 
+        });
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// 4. ВИДАЛИТИ КОМЕНТАР (Тільки свій)
+app.delete('/comments/:id', authenticateToken, (req, res) => {
+    try {
+        const commentId = req.params.id;
+        const userId = req.user.id;
+
+        // Перевіряємо, чи цей коментар належить користувачу
+        const comment = db.prepare("SELECT user_id FROM comments WHERE id = ?").get(commentId);
+        
+        if (!comment) return res.status(404).json({ error: 'Comment not found' });
+        if (comment.user_id !== userId) return res.status(403).json({ error: 'Не можна видаляти чужі коментарі' });
+
+        db.prepare("DELETE FROM comments WHERE id = ?").run(commentId);
+        res.json({ message: 'Deleted' });
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+
+
+
+// ==================================================================
+// SETTINGS (НАЛАШТУВАННЯ)
+// ==================================================================
+// ОНОВЛЕННЯ ПРОФІЛЮ (Аватар, Ім'я)
+app.put('/auth/update', authenticateToken, (req, res) => {
+    try {
+        const { username, avatar_url } = req.body;
+        const userId = req.user.id;
+
+        // Оновлюємо дані в базі
+        const stmt = db.prepare("UPDATE users SET username = ?, avatar_url = ? WHERE id = ?");
+        stmt.run(username, avatar_url, userId);
+
+        // Отримуємо оновленого юзера
+        const updatedUser = db.prepare("SELECT id, username, email, avatar_url FROM users WHERE id = ?").get(userId);
+        
+        // ВАЖЛИВО: Перетворюємо avatar_url -> avatar для фронтенда
+        res.json({ 
+            user: {
+                id: updatedUser.id,
+                username: updatedUser.username,
+                email: updatedUser.email,
+                avatar: updatedUser.avatar_url // <-- Ось це виправлення
+            } 
+        });
+
+    } catch (err) {
+        if (err.code === 'SQLITE_CONSTRAINT_UNIQUE') {
+            return res.status(400).json({ error: 'Це ім\'я вже зайняте' });
+        }
+        console.error(err);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// ЗМІНА ПАРОЛЯ
+app.put('/auth/change-password', authenticateToken, async (req, res) => {
+    try {
+        const { currentPassword, newPassword } = req.body;
+        const userId = req.user.id;
+
+        // 1. Отримуємо поточний хеш пароля
+        const user = db.prepare("SELECT password_hash FROM users WHERE id = ?").get(userId);
+        
+        // 2. Перевіряємо старий пароль
+        const isMatch = await bcrypt.compare(currentPassword, user.password_hash);
+        if (!isMatch) return res.status(400).json({ error: 'Старий пароль невірний' });
+
+        // 3. Хешуємо новий
+        const hashedNewPassword = await bcrypt.hash(newPassword, 10);
+
+        // 4. Оновлюємо
+        db.prepare("UPDATE users SET password_hash = ? WHERE id = ?").run(hashedNewPassword, userId);
+
+        res.json({ message: 'Пароль успішно змінено' });
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+
+// ==================================================================
+// ADMIN PANEL (МАРШРУТИ ДЛЯ АДМІНКИ)
+// ==================================================================
+
+
+
+// 1. ОТРИМАТИ СПИСОК ВСІХ КОРИСТУВАЧІВ
+app.get('/admin/users', authenticateToken, checkAdmin, (req, res) => {
+    try {
+        // Вибираємо основні дані про користувачів
+        const users = db.prepare("SELECT id, username, email, role, created_at, avatar_url FROM users ORDER BY created_at DESC").all();
+        res.json(users);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// 2. ОТРИМАТИ СПИСОК ВСІХ КОМЕНТАРІВ (Для модерації)
+app.get('/admin/comments', authenticateToken, checkAdmin, (req, res) => {
+    try {
+        const comments = db.prepare(`
+            SELECT c.id, c.text, c.created_at, c.content_type, c.content_id, u.username, u.avatar_url
+            FROM comments c
+            JOIN users u ON c.user_id = u.id
+            ORDER BY c.created_at DESC
+            LIMIT 50
+        `).all();
+        res.json(comments);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// 3. ВИДАЛИТИ КОРИСТУВАЧА (Адмінська дія)
+app.delete('/admin/users/:id', authenticateToken, checkAdmin, (req, res) => {
+    try {
+        const targetId = req.params.id;
+        if (targetId == req.user.id) {
+            return res.status(400).json({ error: 'Не можна видалити самого себе' });
+        }
+        
+        // Видаляємо всі сліди користувача
+        db.prepare("DELETE FROM comments WHERE user_id = ?").run(targetId);
+        db.prepare("DELETE FROM bookmarks WHERE user_id = ?").run(targetId);
+        db.prepare("DELETE FROM friends WHERE sender_id = ? OR receiver_id = ?").run(targetId, targetId);
+        db.prepare("DELETE FROM users WHERE id = ?").run(targetId);
+
+        res.json({ message: 'Користувача видалено' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// 4. ВИДАЛИТИ КОМЕНТАР (Адмінська дія)
+app.delete('/admin/comments/:id', authenticateToken, checkAdmin, (req, res) => {
+    try {
+        db.prepare("DELETE FROM comments WHERE id = ?").run(req.params.id);
+        res.json({ message: 'Коментар видалено' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
 
 
 
@@ -84,15 +505,228 @@ app.delete("/deleteBlogByID/:id", (req, res) => {
 
 
 
+// ==================================================================
+// FRIENDS & PUBLIC PROFILE (ДРУЗІ ТА ПУБЛІЧНІ ПРОФІЛІ)
+// ==================================================================
+
+// 2. ОТРИМАТИ ПУБЛІЧНІ ДАНІ КОРИСТУВАЧА (По ID)
+app.get('/users/public/:id', (req, res) => {
+    try {
+        const userId = req.params.id;
+        // Беремо тільки безпечні дані (без пароля!)
+        const user = db.prepare("SELECT id, username, avatar_url, created_at FROM users WHERE id = ?").get(userId);
+        
+        if (!user) return res.status(404).json({ error: 'User not found' });
+        
+        // Також рахуємо кількість закладок (для статистики)
+        const counts = db.prepare(`
+            SELECT 
+                (SELECT COUNT(*) FROM bookmarks WHERE user_id = ? AND content_type = 'movie') as movie_count,
+                (SELECT COUNT(*) FROM bookmarks WHERE user_id = ? AND content_type = 'book') as book_count
+        `).get(userId, userId);
+
+        res.json({ ...user, stats: counts });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// 3. ОТРИМАТИ ЗАКЛАДКИ КОРИСТУВАЧА (Публічні)
+app.get('/bookmarks/public/:userId', (req, res) => {
+    try {
+        const userId = req.params.userId;
+        const bookmarks = db.prepare("SELECT * FROM bookmarks WHERE user_id = ? ORDER BY created_at DESC").all(userId);
+        res.json(bookmarks);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// 4. СТАТУС ДРУЖБИ (Перевірка + Відправка запиту)
+// Перевірити статус
+app.get('/friends/status/:targetId', authenticateToken, (req, res) => {
+    try {
+        const myId = req.user.id;
+        const targetId = req.params.targetId;
+
+        // Шукаємо будь-який зв'язок між цими двома
+        const relation = db.prepare(`
+            SELECT * FROM friends 
+            WHERE (sender_id = ? AND receiver_id = ?) 
+               OR (sender_id = ? AND receiver_id = ?)
+        `).get(myId, targetId, targetId, myId);
+
+        if (!relation) return res.json({ status: 'none' });
+
+        // Якщо запит відправив Я
+        if (relation.sender_id === myId) {
+            return res.json({ status: relation.status === 'accepted' ? 'friends' : 'request_sent' });
+        }
+        
+        // Якщо запит відправили МЕНІ
+        if (relation.receiver_id === myId) {
+            return res.json({ status: relation.status === 'accepted' ? 'friends' : 'request_received' });
+        }
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// Відправити запит
+app.post('/friends/request', authenticateToken, (req, res) => {
+    try {
+        const senderId = req.user.id;
+        const { receiverId } = req.body;
+
+        if (senderId == receiverId) return res.status(400).json({ error: 'Не можна додати себе' });
+
+        const stmt = db.prepare("INSERT INTO friends (sender_id, receiver_id) VALUES (?, ?)");
+        stmt.run(senderId, receiverId);
+
+        res.json({ message: 'Запит відправлено' });
+    } catch (err) {
+        if (err.code === 'SQLITE_CONSTRAINT_UNIQUE') {
+            return res.status(400).json({ error: 'Запит вже існує' });
+        }
+        console.error(err);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
 
 
+// ==================================================================
+// FRIENDS MANAGEMENT (УПРАВЛІННЯ ДРУЗЯМИ)
+// ==================================================================
 
 
+// 1. ПОШУК КОРИСТУВАЧІВ (за нікнеймом)
+app.get('/users/search', authenticateToken, (req, res) => {
+    try {
+        const { q } = req.query;
+        const myId = req.user.id;
+        
+        if (!q) return res.json([]);
 
+        // Шукаємо схожих, крім себе
+        const users = db.prepare(`
+            SELECT id, username, avatar_url 
+            FROM users 
+            WHERE username LIKE ? AND id != ?
+            LIMIT 10
+        `).all(`%${q}%`, myId);
 
+        res.json(users);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
 
+// 2. ОТРИМАТИ СПИСОК ДРУЗІВ (Вже підтверджених)
+app.get('/friends/list', authenticateToken, (req, res) => {
+    try {
+        const myId = req.user.id;
+        // Друг може бути або sender, або receiver, головне що status='accepted'
+        const friends = db.prepare(`
+            SELECT u.id, u.username, u.avatar_url, f.id as relation_id
+            FROM users u
+            JOIN friends f ON (u.id = f.sender_id OR u.id = f.receiver_id)
+            WHERE (f.sender_id = ? OR f.receiver_id = ?)
+            AND f.status = 'accepted'
+            AND u.id != ?
+        `).all(myId, myId, myId);
 
+        res.json(friends);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
 
+// 3. ОТРИМАТИ ВХІДНІ ЗАЯВКИ (Мені надіслали)
+app.get('/friends/requests/received', authenticateToken, (req, res) => {
+    try {
+        const myId = req.user.id;
+        const requests = db.prepare(`
+            SELECT u.id, u.username, u.avatar_url, f.id as relation_id, f.created_at
+            FROM users u
+            JOIN friends f ON u.id = f.sender_id
+            WHERE f.receiver_id = ? AND f.status = 'pending'
+        `).all(myId);
+
+        res.json(requests);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// 4. ОТРИМАТИ ВИХІДНІ ЗАЯВКИ (Я надіслав)
+app.get('/friends/requests/sent', authenticateToken, (req, res) => {
+    try {
+        const myId = req.user.id;
+        const requests = db.prepare(`
+            SELECT u.id, u.username, u.avatar_url, f.id as relation_id, f.created_at
+            FROM users u
+            JOIN friends f ON u.id = f.receiver_id
+            WHERE f.sender_id = ? AND f.status = 'pending'
+        `).all(myId);
+
+        res.json(requests);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// 5. ПРИЙНЯТИ ЗАЯВКУ
+app.post('/friends/accept', authenticateToken, (req, res) => {
+    try {
+        const { relationId } = req.body;
+        const myId = req.user.id;
+
+        // Перевіряємо, чи це дійсно заявка мені
+        const request = db.prepare("SELECT * FROM friends WHERE id = ?").get(relationId);
+        
+        if (!request || request.receiver_id !== myId) {
+            return res.status(403).json({ error: 'Немає доступу' });
+        }
+
+        db.prepare("UPDATE friends SET status = 'accepted' WHERE id = ?").run(relationId);
+        res.json({ message: 'Заявку прийнято' });
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// 6. ВИДАЛИТИ ДРУГА / ВІДХИЛИТИ / СКАСУВАТИ ЗАЯВКУ
+// Цей один роут працює для всіх випадків видалення зв'язку
+app.delete('/friends/remove/:relationId', authenticateToken, (req, res) => {
+    try {
+        const { relationId } = req.params;
+        const myId = req.user.id;
+
+        // Перевіряємо, чи я учасник цього зв'язку
+        const relation = db.prepare("SELECT * FROM friends WHERE id = ?").get(relationId);
+        
+        if (!relation || (relation.sender_id !== myId && relation.receiver_id !== myId)) {
+            return res.status(403).json({ error: 'Немає доступу' });
+        }
+
+        db.prepare("DELETE FROM friends WHERE id = ?").run(relationId);
+        res.json({ message: 'Видалено' });
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
 
 
 
@@ -705,6 +1339,7 @@ app.get('/book/ol/:id', async (req, res) => {
         res.status(500).json({ error: 'Server error' });
     }
 });
+
 
 
 

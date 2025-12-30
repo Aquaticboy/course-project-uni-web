@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { useHistory } from 'react-router-dom'; 
-import { IconSearch } from '@tabler/icons-react';
+import { useHistory, Link } from 'react-router-dom'; // Link імпортовано
+import { IconSearch, IconLogout, IconUser, IconSettings, IconLogin, IconUsers, IconShieldLock } from '@tabler/icons-react';
 import {
   Autocomplete,
   Burger,
@@ -10,13 +10,20 @@ import {
   Image,
   ActionIcon,
   rem,
-  Center // Додав Center для вирівнювання в мобільному меню
+  Center,
+  Menu,
+  Avatar,
+  Button,
+  Text,
+  Divider
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import classes from './HeaderSearch.module.css';
-import ColorSchemeToggle from './ColorSchemeToggle'; // Імпорт вже є, це добре
-
+import ColorSchemeToggle from './ColorSchemeToggle'; 
 import lagoonLogo from '../../images/LagoonLogoWhite-removebg.png';
+
+// Переконайся, що шлях правильний (Context з великої літери, якщо папка так називається)
+import { useAuth } from '../../Context/AuthContext';
 
 const links = [
   { link: '/', label: 'Головна' },
@@ -28,6 +35,8 @@ export function HeaderSearch() {
   const [opened, { open, close, toggle }] = useDisclosure(false);
   const [searchValue, setSearchValue] = useState('');
   const history = useHistory();
+
+  const { user, logout } = useAuth();
 
   const handleSearch = (query) => {
     if (query && query.trim().length > 0) {
@@ -43,15 +52,16 @@ export function HeaderSearch() {
     }
   };
 
+  // ВИПРАВЛЕНО: Використовуємо Link замість <a>, щоб сторінка не перезавантажувалась
   const items = links.map((link) => (
-    <a
+    <Link
       key={link.label}
-      href={link.link}
+      to={link.link}
       className={classes.link}
       onClick={() => close()}
     >
       {link.label}
-    </a>
+    </Link>
   ));
 
   return (
@@ -71,6 +81,36 @@ export function HeaderSearch() {
         }}
       >
         <Stack gap="md">
+          {/* БЛОК ПРОФІЛЮ ДЛЯ МОБІЛЬНИХ */}
+          {user ? (
+            <Group mb="md" style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: 15 }}>
+              <Avatar src={user.avatar} alt={user.username} color="orange" radius="xl">
+                 {user.username?.[0]?.toUpperCase()}
+              </Avatar>
+              <div style={{ flex: 1 }}>
+                <Text size="sm" fw={500} c="white">
+                  {user.username}
+                </Text>
+                <Text c="dimmed" size="xs">
+                  {user.email}
+                </Text>
+              </div>
+            </Group>
+          ) : (
+            <Button 
+                component={Link} 
+                to="/auth" 
+                variant="gradient" 
+                gradient={{ from: 'orange', to: 'red' }} 
+                fullWidth 
+                mb="md"
+                onClick={close}
+                leftSection={<IconLogin size={18}/>}
+            >
+                Увійти / Реєстрація
+            </Button>
+          )}
+
           <Autocomplete
             radius="xl"
             size="md"
@@ -95,7 +135,20 @@ export function HeaderSearch() {
           />
           {items}
 
-          {/* <--- ДОДАНО: Перемикач теми для мобільних (внизу списку) */}
+          {/* Кнопка виходу для мобільних */}
+          {user && (
+             <Button 
+                variant="subtle" 
+                color="red" 
+                fullWidth 
+                leftSection={<IconLogout size={18} />}
+                onClick={() => { logout(); close(); }}
+                mt="md"
+             >
+                Вийти з акаунту
+             </Button>
+          )}
+
           <Center mt="xl" style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '20px' }}>
              <ColorSchemeToggle />
           </Center>
@@ -115,7 +168,9 @@ export function HeaderSearch() {
               color="white" 
             />
             
-            <a href="/" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
+            {/* ВИПРАВЛЕНО: Логотип тепер використовує Link замість <a> */}
+            {/* Це запобігає перезавантаженню сторінки та зникненню аватара */}
+            <Link to="/" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
                 <Image 
                     src={lagoonLogo} 
                     h={35} 
@@ -124,7 +179,7 @@ export function HeaderSearch() {
                     alt="Lagoon Logo"
                     className={classes.logo}
                 />
-            </a>
+            </Link>
           </Group>
 
           <Group visibleFrom="sm">
@@ -135,7 +190,7 @@ export function HeaderSearch() {
             {/* Пошук */}
             <Autocomplete
               className={classes.search}
-              placeholder="Пошук фільму..."
+              placeholder="Пошук..."
               radius="xl"
               leftSection={<IconSearch style={{ width: rem(16), height: rem(16) }} stroke={1.5} color="#aaa" />}
               data={[]}
@@ -154,9 +209,7 @@ export function HeaderSearch() {
                         borderColor: 'rgba(255, 255, 255, 0.3)',
                         width: '280px'
                     },
-                    '&::placeholder': {
-                        color: 'rgba(255, 255, 255, 0.4)'
-                    }
+                    '&::placeholder': { color: 'rgba(255, 255, 255, 0.4)' }
                 }
               }}
               rightSection={
@@ -168,8 +221,87 @@ export function HeaderSearch() {
               }
             />
 
-            {/* <--- ДОДАНО: Перемикач теми для десктопу (справа від пошуку) */}
             <ColorSchemeToggle />
+
+            {/* 3. ЛОГІКА ПРОФІЛЮ (ДЕСКТОП) */}
+            {user ? (
+              <Menu shadow="md" width={200} position="bottom-end" withArrow>
+                <Menu.Target>
+                  <Button 
+                    variant="subtle" 
+                    color="gray" 
+                    style={{ color: 'white' }}
+                    leftSection={
+                        <Avatar src={user.avatar} alt={user.username} radius="xl" size={26} color="orange">
+                          {user.username?.[0]?.toUpperCase()}
+                        </Avatar>
+                    }
+                  >
+                    {user.username}
+                  </Button>
+                </Menu.Target>
+
+                <Menu.Dropdown>
+                  <Menu.Label>Мій акаунт</Menu.Label>
+                  
+                  <Menu.Item 
+                    leftSection={<IconUser style={{ width: rem(14), height: rem(14) }} />}
+                    component={Link} 
+                    to="/profile"
+                  >
+                    Профіль
+                  </Menu.Item>
+
+                  <Menu.Item 
+                    leftSection={<IconUsers style={{ width: rem(14), height: rem(14) }} />}
+                    component={Link} 
+                    to="/friends"
+                  >
+                    Друзі
+                  </Menu.Item>
+
+                  <Menu.Item 
+                    leftSection={<IconSettings style={{ width: rem(14), height: rem(14) }} />}
+                    component={Link} 
+                    to="/settings"
+                  >
+                    Налаштування
+                  </Menu.Item>
+                  
+                  <Menu.Divider />
+                  
+                  <Menu.Item 
+                    color="red" 
+                    leftSection={<IconLogout style={{ width: rem(14), height: rem(14) }} />}
+                    onClick={logout}
+                  >
+                    Вийти
+                  </Menu.Item>
+
+                  {user.role === 'admin' && (
+                    <Menu.Item 
+                      leftSection={<IconShieldLock style={{ width: rem(14), height: rem(14) }} />}
+                      color="red"
+                      component={Link} 
+                      to="/admin"
+                    >
+                      Адмін Панель
+                    </Menu.Item>
+                  )}
+                </Menu.Dropdown>
+              </Menu>
+            ) : (
+              <Button 
+                component={Link} 
+                to="/auth" 
+                variant="light" 
+                color="orange"
+                radius="xl"
+                size="xs"
+              >
+                Увійти
+              </Button>
+            )}
             
           </Group>
         </div>

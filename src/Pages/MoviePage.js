@@ -10,6 +10,7 @@ import MovieTabs from '../MantineCompon/MoviePage/MovieTabs';
 import MovieSidebar from '../MantineCompon/MoviePage/MovieSidebar';
 import SimilarMovies from '../MantineCompon/MoviePage/SimilarMovies';
 import MoviePlayer from '../MantineCompon/MoviePage/MoviePlayer';
+import CommentsSection from '../MantineCompon/Comments/CommentsSection';
 
 const MoviePage = () => {
   const { id } = useParams();
@@ -102,6 +103,12 @@ const MoviePage = () => {
         <Box mt={80}>
              <SimilarMovies similar={film.similar} />
         </Box>
+
+        {/* --- КОМЕНТАРІ --- */}
+        <Box mt={80}>
+            <CommentsSection contentId={id} contentType="movie" />
+        </Box>
+
       </Container>
     </Box>
   );

@@ -8,6 +8,11 @@ import {
 } from '@tabler/icons-react';
 import useFetch from '../useFetch';
 
+// ІМПОРТ КНОПКИ
+import BookmarkButton from '../MantineCompon/BookmarkButton/BookmarkButton';
+// 1. ІМПОРТ КОМЕНТАРІВ
+import CommentsSection from '../MantineCompon/Comments/CommentsSection';
+
 const BookPageOL = () => {
     const { id } = useParams();
     const history = useHistory();
@@ -45,16 +50,20 @@ const BookPageOL = () => {
         border: isDark ? '1px solid rgba(255, 255, 255, 0.05)' : '1px solid #e9ecef',
     };
 
+    // АДАПТАЦІЯ ДЛЯ ЗАКЛАДОК
+    const bookmarkItem = {
+        ...book,
+        poster_path: book.poster_full
+    };
+
     return (
         <Box pb={80} style={{ minHeight: '100vh', position: 'relative', overflow: 'hidden' }}>
             
-            {/* 1. ФОНОВЕ СВІТІННЯ (GLOW) */}
+            {/* ФОНОВЕ СВІТІННЯ (GLOW) */}
             {isDark && (
                 <div style={{
                     position: 'absolute', top: '-100px', left: '50%', transform: 'translateX(-50%)',
                     width: '100%', height: '800px',
-                    // Використовуємо трохи інший відтінок для Open Library (бірюзово-зелений або лишаємо помаранчевий для єдності)
-                    // Давайте залишимо помаранчевий, щоб сайт був в одному стилі:
                     background: 'radial-gradient(circle, rgba(255, 169, 77, 0.15) 0%, transparent 70%)', 
                     filter: 'blur(80px)', zIndex: 0, pointerEvents: 'none'
                 }} />
@@ -100,7 +109,6 @@ const BookPageOL = () => {
                             <Paper p="md" radius="md" shadow="sm" style={glassPaperStyle}>
                                 <Stack gap="sm">
                                     <InfoRow icon={<IconCalendar size={18}/>} label="Дата публікації" value={book.publishedDate} />
-                                    {/* В OL часто є дані про видавців, можна додати сюди якщо API повертає */}
                                 </Stack>
                             </Paper>
 
@@ -124,10 +132,15 @@ const BookPageOL = () => {
                     {/* --- ПРАВА КОЛОНКА --- */}
                     <Grid.Col span={{ base: 12, md: 8, lg: 9 }}>
                         <Stack gap="xs" mb="xl">
-                            {/* ЗАГОЛОВОК */}
-                            <Title order={1} c="var(--mantine-color-text)" style={{ fontSize: '2.5rem' }}>
-                                {book.title}
-                            </Title>
+                            
+                            {/* ЗАГОЛОВОК + КНОПКА ЗАКЛАДОК */}
+                            <Group justify="space-between" align="flex-start" wrap="nowrap">
+                                <Title order={1} c="var(--mantine-color-text)" style={{ fontSize: '2.5rem', lineHeight: 1.1 }}>
+                                    {book.title}
+                                </Title>
+                                {/* Кнопка */}
+                                <BookmarkButton item={bookmarkItem} type="book" />
+                            </Group>
                             
                             {/* АВТОРИ */}
                             <Text size="lg" fw={600} c="orange" mt="xs">
@@ -184,12 +197,18 @@ const BookPageOL = () => {
                         )}
                     </Grid.Col>
                 </Grid>
+
+                {/* 2. БЛОК КОМЕНТАРІВ */}
+                <Box mt={80}>
+                     <CommentsSection contentId={id} contentType="book" />
+                </Box>
+
             </Container>
         </Box>
     );
 };
 
-// Допоміжний компонент (такий самий як в BookPage)
+// Допоміжний компонент
 const InfoRow = ({ icon, label, value }) => {
     if (!value) return null;
     return (
