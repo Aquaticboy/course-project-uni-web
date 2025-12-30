@@ -5,12 +5,19 @@ import { IconStar } from '@tabler/icons-react';
 const ActorHero = ({ name, deathday, popularityScore, popularityRaw }) => {
     return (
         <Group justify="space-between" align="flex-start" mb="lg">
-            <Box>
-                <Title order={1} fz={{ base: 30, md: 40 }}>{name}</Title>
+            <Box style={{ maxWidth: '70%' }}>
+                {/* Адаптивний розмір шрифту */}
+                <Title order={1} c="var(--mantine-color-text)" fz={{ base: 28, sm: 34, md: 40 }} lh={1.1}>
+                    {name}
+                </Title>
                 {deathday && <Badge color="red" variant="light" size="lg" mt={5}>Помер(ла)</Badge>}
             </Box>
 
             <Group gap="xs" align="center">
+                <Stack gap={0} visibleFrom="sm" align="flex-end">
+                    <Text size="sm" fw={700} c="var(--mantine-color-text)">Популярність</Text>
+                    <Text size="xs" c="dimmed">{popularityRaw.toFixed(0)} балів</Text>
+                </Stack>
                 <RingProgress
                     size={60}
                     thickness={5}
@@ -24,10 +31,6 @@ const ActorHero = ({ name, deathday, popularityScore, popularityRaw }) => {
                         </Center>
                     }
                 />
-                <Stack gap={0} visibleFrom="sm">
-                    <Text size="sm" fw={700}>Популярність</Text>
-                    <Text size="xs" c="dimmed">{popularityRaw.toFixed(0)} балів</Text>
-                </Stack>
             </Group>
         </Group>
     );

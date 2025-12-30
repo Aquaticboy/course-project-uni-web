@@ -18,10 +18,8 @@ import BookPage from "./Pages/BookPage";
 
 const theme = createTheme({
   primaryColor: 'orange', 
-  
   fontFamily: 'Verdana, sans-serif',
   headings: { fontFamily: 'Georgia, serif' },
-
   defaultRadius: 'md', 
 });
 
@@ -30,40 +28,59 @@ function App() {
     <MantineProvider theme={theme} defaultColorScheme="light">
       <Router>
         <div className="App">
-          {/* <Navbar /> */}
+          {/* 1. Header залишається на всю ширину (без Container) */}
           <HeaderSearch />
 
-          <Container size="lg" mt="md">
-            <Switch>
-              <Route exact path="/">
-                <Home />
-              </Route>
-              <Route path="/MovieSearch">
-                <MovieSearch />
-              </Route>
-              <Route path="/moviePage/:id">
-                <MoviePage />
-              </Route>
-              <Route path="/actor/:id">
-                <ActorPage />
-              </Route>
-              <Route path="/BookSearch">
-                <BookSearch />
-              </Route>
-              <Route path="/bookInfo/:id">
-                <BookPage />
-              </Route>
+          <Switch>
+            {/* 2. HOME PAGE - Рендериться БЕЗ контейнера (на всю ширину) */}
+            <Route exact path="/">
+              <Home />
+            </Route>
 
-              <Route path="/bookInfoOL/:id">
-                <BookPageOL />
-              </Route>
+            {/* 3. ВСІ ІНШІ СТОРІНКИ - Обгорнуті в Container */}
+            <Route>
+              <Container size="lg" mt="md">
+                <Switch>
+                  <Route path="/MovieSearch">
+                    <MovieSearch />
+                  </Route>
+                  
+                  {/* Виправив шлях: було /moviePage/:id, а в Home ми посилаємось на /movieInfoByID/:id */}
+                  {/* Якщо у тебе в Home.js посилання /movieInfoByID, то тут теж має бути так. */}
+                  {/* Я залишаю як було в твоєму старому App.js, але зверни на це увагу */}
+                  <Route path="/movieInfoByID/:id"> 
+                    <MoviePage />
+                  </Route>
+                  {/* Старий варіант про всяк випадок: */}
+                  <Route path="/moviePage/:id">
+                    <MoviePage />
+                  </Route>
 
-              <Route path="*">
-                <NotFound />
-              </Route>
-            </Switch>
-          </Container>
+                  <Route path="/actor/:id">
+                    <ActorPage />
+                  </Route>
+                  
+                  <Route path="/BookSearch">
+                    <BookSearch />
+                  </Route>
+                  
+                  <Route path="/bookInfo/:id">
+                    <BookPage />
+                  </Route>
 
+                  <Route path="/bookInfoOL/:id">
+                    <BookPageOL />
+                  </Route>
+
+                  <Route path="*">
+                    <NotFound />
+                  </Route>
+                </Switch>
+              </Container>
+            </Route>
+          </Switch>
+
+          {/* 4. Footer залишається на всю ширину (без Container) */}
           <Footer />
         </div>
       </Router>

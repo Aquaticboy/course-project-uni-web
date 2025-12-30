@@ -1,7 +1,7 @@
-import React from 'react'; // useRef більше не потрібен, прибираємо
+import React from 'react';
 import { useParams } from 'react-router-dom';
-import { Container, Grid, Button, Box, Loader, Center, Title, Text } from '@mantine/core';
-import { useScrollIntoView } from '@mantine/hooks'; // 1. Імпортуємо хук
+import { Container, Grid, Button, Box, Loader, Center, Title, Text, useMantineColorScheme } from '@mantine/core';
+import { useScrollIntoView } from '@mantine/hooks';
 import { IconArrowLeft } from '@tabler/icons-react';
 import useFetch from '../useFetch';
 
@@ -14,18 +14,19 @@ import MoviePlayer from '../MantineCompon/MoviePage/MoviePlayer';
 const MoviePage = () => {
   const { id } = useParams();
   const { data: film, error, isPending } = useFetch(`http://localhost:3001/movieInfoByID/${id}`);
+  const { colorScheme } = useMantineColorScheme();
+  const isDark = colorScheme === 'dark';
   
-  // 2. Налаштовуємо хук для плавної прокрутки
   const { scrollIntoView, targetRef } = useScrollIntoView({
-    offset: 20,      // Відступ зверху (щоб плеєр не прилипав до самого краю екрану)
-    duration: 1200,  // Час прокрутки в мс (1.2 секунди) — чим більше, тим повільніше
-    easing: (t) => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t, // (Опціонально) Плавне прискорення/гальмування
+    offset: 20,
+    duration: 1200,
+    easing: (t) => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t,
   });
 
   if (isPending) {
     return (
       <Center h="100vh">
-        <Loader size="xl" variant="bars" />
+        <Loader size="xl" variant="bars" color="orange" />
       </Center>
     );
   }
@@ -41,16 +42,40 @@ const MoviePage = () => {
   }
 
   return (
-    <Box pb={80} bg="gray.0">
-      
-      {/* 3. Передаємо функцію scrollIntoView (яка прийшла з хука) */}
+    <Box 
+      pb={80} 
+      style={{ 
+          backgroundColor: 'var(--mantine-color-body)', 
+          minHeight: '100vh',
+          position: 'relative',
+          overflow: 'hidden' // Щоб світіння не вилазило за межі
+      }}
+    >
       <MovieHero 
         film={film} 
         onTrailerClick={() => scrollIntoView({ alignment: 'start' })} 
       />
 
-      <Container size="xl" mt={80}>
-        <Grid gutter={40}>
+      {/* --- АТМОСФЕРНЕ СВІТІННЯ (GLOW EFFECT) --- */}
+      {/* Показуємо тільки в темній темі для ефекту кінотеатру */}
+      {isDark && (
+          <div style={{
+              position: 'absolute',
+              top: '500px', // Починається під банером
+              left: '50%',
+              transform: 'translateX(-50%)',
+              width: '100%',
+              maxWidth: '1200px',
+              height: '800px',
+              background: 'radial-gradient(circle, rgba(255, 128, 0, 0.15) 0%, transparent 70%)', // Помаранчевий (під колір сайту)
+              filter: 'blur(100px)',
+              zIndex: 0,
+              pointerEvents: 'none'
+          }} />
+      )}
+
+      <Container size="xl" mt={80} style={{ position: 'relative', zIndex: 1 }}>
+        <Grid gutter={50}>
           <Grid.Col span={{ base: 12, lg: 8 }}>
             <MovieTabs film={film} />
           </Grid.Col>
@@ -60,16 +85,23 @@ const MoviePage = () => {
           </Grid.Col>
         </Grid>
 
-        {/* 4. Прив'язуємо targetRef до блоку з трейлером */}
-        <Box mt={60} ref={targetRef}>
-            <Title order={3} mb="md">Офіційний трейлер</Title>
+        <Box mt={80} ref={targetRef}>
+            <Title 
+                order={3} mb="lg" 
+                c="var(--mantine-color-text)"
+                style={{ borderLeft: '4px solid orange', paddingLeft: '15px' }} // Стильний акцент зліва
+            >
+                Офіційний трейлер
+            </Title>
             <MoviePlayer 
                 videos={film.videos} 
                 poster={film.backdrop_full_url || film.poster_full_url} 
             />
         </Box>
 
-        <SimilarMovies similar={film.similar} />
+        <Box mt={80}>
+             <SimilarMovies similar={film.similar} />
+        </Box>
       </Container>
     </Box>
   );

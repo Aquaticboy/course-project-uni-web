@@ -1,10 +1,9 @@
 import React from 'react';
-import { useHistory } from 'react-router-dom'; // 1. Додаємо цей імпорт
+import { useHistory } from 'react-router-dom';
 import { Box, Container, Button, Grid, Paper, AspectRatio, Image, Stack, Text, Title, Group, RingProgress, Divider, Badge } from '@mantine/core';
 import { IconArrowLeft, IconCalendar, IconClock, IconPlayerPlay } from '@tabler/icons-react';
 
 const MovieHero = ({ film, onTrailerClick }) => {
-  // 2. Ініціалізуємо історію
   const history = useHistory();
 
   const releaseYear = film.release_date ? film.release_date.split('-')[0] : 'N/A';
@@ -18,8 +17,12 @@ const MovieHero = ({ film, onTrailerClick }) => {
       style={{
         position: 'relative',
         minHeight: '650px',
-        backgroundColor: '#101113',
-        backgroundImage: `linear-gradient(to top, #101113 0%, rgba(0,0,0,0.6) 60%, rgba(0,0,0,0.8) 100%), url(${film.backdrop_full_url || film.poster_full_url})`,
+        // ЗМІНА: Фон під картинкою тепер адаптивний (щоб не було чорних смуг при завантаженні)
+        backgroundColor: 'var(--mantine-color-body)',
+        
+        // ЗМІНА: Градієнт тепер переходить у колір тіла сторінки (var(--mantine-color-body))
+        // Це забезпечує плавний перехід і в світлій (в біле), і в темній (в чорне) темі.
+        backgroundImage: `linear-gradient(to top, var(--mantine-color-body) 0%, rgba(0,0,0,0.6) 60%, rgba(0,0,0,0.8) 100%), url(${film.backdrop_full_url || film.poster_full_url})`,
         backgroundSize: 'cover',
         backgroundPosition: 'center top',
         display: 'flex',
@@ -27,14 +30,11 @@ const MovieHero = ({ film, onTrailerClick }) => {
         paddingBottom: '3rem'
       }}
     >
+      {/* Текст залишаємо білим, бо він на темному фоні картинки */}
       <Container size="xl" w="100%" style={{ zIndex: 2, color: 'white' }}>
         
-        {/* 3. ЗМІНЮЄМО КНОПКУ "НАЗАД" */}
         <Button 
-          // component="a" // ВИДАЛЯЄМО ЦЕ (бо це не просто лінк)
-          // href="/"      // ВИДАЛЯЄМО ЦЕ
-          onClick={() => history.goBack()} // ДОДАЄМО ЦЕ
-          
+          onClick={() => history.goBack()}
           variant="white" 
           color="dark" 
           leftSection={<IconArrowLeft size={16} />} 
@@ -44,9 +44,18 @@ const MovieHero = ({ film, onTrailerClick }) => {
         </Button>
 
         <Grid gutter={50} align="flex-end">
-          {/* ... далі код без змін ... */}
           <Grid.Col span={{ base: 12, md: 3 }} visibleFrom="sm">
-            <Paper shadow="xl" radius="md" style={{ overflow: 'hidden', border: '4px solid white', transform: 'translateY(60px)' }}>
+            <Paper 
+                shadow="xl" 
+                radius="md" 
+                style={{ 
+                    overflow: 'hidden', 
+                    // ЗМІНА: Рамка тепер кольору фону сторінки.
+                    // У темній темі рамка темна, у світлій - біла.
+                    border: '4px solid var(--mantine-color-body)', 
+                    transform: 'translateY(60px)' 
+                }}
+            >
               <AspectRatio ratio={2/3}>
                 <Image src={film.poster_full_url} alt={film.title} fallbackSrc="https://placehold.co/500x750?text=No+Poster" />
               </AspectRatio>
@@ -59,7 +68,7 @@ const MovieHero = ({ film, onTrailerClick }) => {
                 <Text fs="italic" c="yellow.4" fw={600} size="lg">“{film.tagline}”</Text>
               )}
               
-              <Title order={1} fz={{ base: 36, md: 60 }} lh={1.1}>
+              <Title order={1} fz={{ base: 36, md: 60 }} lh={1.1} c="white">
                 {film.title}
               </Title>
 
@@ -72,13 +81,13 @@ const MovieHero = ({ film, onTrailerClick }) => {
                     label={<Text c="white" fw={700} ta="center" size="sm">{film.vote_average.toFixed(1)}</Text>}
                   />
                   <Stack gap={0}>
-                      <Text fw={700}>Рейтинг</Text>
-                      <Text size="xs" c="dimmed">{film.vote_count} голосів</Text>
+                      <Text fw={700} c="white">Рейтинг</Text>
+                      <Text size="xs" c="gray.4">{film.vote_count} голосів</Text>
                   </Stack>
                   <Divider orientation="vertical" color="gray.7" />
                   <Box>
-                      <Group gap={5}><IconCalendar size={16}/><Text>{releaseYear}</Text></Group>
-                      <Group gap={5}><IconClock size={16}/><Text>{hours} год {minutes} хв</Text></Group>
+                      <Group gap={5}><IconCalendar size={16}/><Text c="white">{releaseYear}</Text></Group>
+                      <Group gap={5}><IconClock size={16}/><Text c="white">{hours} год {minutes} хв</Text></Group>
                   </Box>
               </Group>
 

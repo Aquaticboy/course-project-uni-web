@@ -1,17 +1,16 @@
 import React from 'react';
-import { useParams } from 'react-router-dom';
-import { Container, Grid, Box, Loader, Center, Button, Title } from '@mantine/core';
-import { IconArrowLeft } from '@tabler/icons-react';
+import { useParams, useHistory } from 'react-router-dom';
+import { Container, Grid, Box, Loader, Center, Button, Title, Text, useMantineColorScheme } from '@mantine/core';
+import { IconArrowLeft, IconUserX } from '@tabler/icons-react';
 import useFetch from '../useFetch';
 
-// Імпортуємо наші нові компоненти
 import ActorSidebar from '../MantineCompon/ActorPage/ActorSidebar';
 import ActorHero from '../MantineCompon/ActorPage/ActorHero';
 import ActorBio from '../MantineCompon/ActorPage/ActorBio';
 import ActorGallery from '../MantineCompon/ActorPage/ActorGallery';
 import ActorFilmography from '../MantineCompon/ActorPage/ActorFilmography';
 
-// Функції розрахунків залишаємо тут або можеш винести в utils.js
+// --- Utils ---
 const calculateAgeOrDeath = (birthday, deathday) => {
     if (!birthday) return null;
     const start = new Date(birthday);
@@ -33,15 +32,22 @@ const getGender = (genderCode) => {
 
 const ActorPage = () => {
     const { id } = useParams();
+    const history = useHistory(); // Використовуємо history для навігації
+    const { colorScheme } = useMantineColorScheme();
+    const isDark = colorScheme === 'dark';
+
     const { data: actor, error, isPending } = useFetch(`http://localhost:3001/actor/${id}`);
 
-    if (isPending) return <Center h="100vh"><Loader size="xl" variant="bars" /></Center>;
+    if (isPending) return <Center h="100vh"><Loader size="xl" color="orange" type="dots" /></Center>;
 
     if (error || !actor) {
         return (
-            <Container py="xl" ta="center">
-                <Title>Актора не знайдено</Title>
-                <Button component="a" href="/" mt="md" leftSection={<IconArrowLeft />}>На головну</Button>
+            <Container py="xl" ta="center" h="100vh" style={{display: 'flex', flexDirection: 'column', justifyContent: 'center'}}>
+                <IconUserX size={64} color="gray" style={{ margin: '0 auto', marginBottom: 20 }}/>
+                <Title c="var(--mantine-color-text)">Актора не знайдено</Title>
+                <Button mt="md" onClick={() => history.push('/')} variant="light" color="orange" leftSection={<IconArrowLeft />}>
+                    На головну
+                </Button>
             </Container>
         );
     }
@@ -57,28 +63,46 @@ const ActorPage = () => {
     const gallery = actor.images?.profiles?.slice(1, 11) || [];
 
     return (
-        <Box pb={80} bg="gray.0" style={{ minHeight: '100vh' }}>
-            <Box bg="gray.1" py="md" mb="xl" style={{borderBottom: '1px solid #e0e0e0'}}>
-                 <Container size="xl">
-                    <Button component="a" href="/" variant="subtle" color="dark" leftSection={<IconArrowLeft />}>
-                        На головну
+        <Box pb={80} style={{ minHeight: '100vh', position: 'relative', overflow: 'hidden' }}>
+            
+            {/* ФОНОВЕ СВІТІННЯ (GLOW) */}
+            {isDark && (
+                <div style={{
+                    position: 'absolute', top: '-100px', right: '-10%',
+                    width: '60%', height: '800px',
+                    background: 'radial-gradient(circle, rgba(255, 128, 0, 0.15) 0%, transparent 70%)', 
+                    filter: 'blur(80px)', zIndex: 0, pointerEvents: 'none'
+                }} />
+            )}
+
+            {/* ХЕДЕР */}
+            <Box py="md" mb="xl" style={{ position: 'relative', zIndex: 2 }}>
+                <Container size="xl">
+                    <Button 
+                        onClick={() => history.goBack()} 
+                        variant="subtle" 
+                        color="gray" 
+                        leftSection={<IconArrowLeft />}
+                    >
+                        Назад
                     </Button>
-                 </Container>
+                </Container>
             </Box>
 
-            <Container size="xl">
+            <Container size="xl" style={{ position: 'relative', zIndex: 1 }}>
                 <Grid gutter={50}>
-                    {/* ЛІВА КОЛОНКА */}
+                    {/* ЛІВА КОЛОНКА (Сайдбар) */}
                     <Grid.Col span={{ base: 12, md: 4, lg: 3 }}>
                         <ActorSidebar 
                             actor={actor} 
                             age={age} 
                             gender={gender} 
                             socials={actor.external_ids || {}} 
+                            isDark={isDark}
                         />
                     </Grid.Col>
 
-                    {/* ПРАВА КОЛОНКА */}
+                    {/* ПРАВА КОЛОНКА (Контент) */}
                     <Grid.Col span={{ base: 12, md: 8, lg: 9 }}>
                         
                         <ActorHero 
@@ -91,9 +115,10 @@ const ActorPage = () => {
                         <ActorBio 
                             biography={actor.biography} 
                             name={actor.name} 
+                            isDark={isDark}
                         />
 
-                        <ActorGallery gallery={gallery} />
+                        <ActorGallery gallery={gallery} isDark={isDark} />
 
                         <ActorFilmography movies={knownFor} />
 

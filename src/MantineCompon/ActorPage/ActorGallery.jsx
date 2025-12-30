@@ -6,15 +6,22 @@ const ActorGallery = ({ gallery }) => {
 
     return (
         <Box mb={50}>
-            <Title order={3} mb="md">Фотогалерея</Title>
-            <ScrollArea type="hover" scrollbarSize={8} pb="md">
-                <Group wrap="nowrap">
+            <Title order={3} mb="md" c="var(--mantine-color-text)">Фотогалерея</Title>
+            <ScrollArea type="hover" scrollbarSize={8} pb="md" offsetScrollbars>
+                <Group wrap="nowrap" gap="md">
                     {gallery.map((img, idx) => (
                         <Paper 
                             key={idx} 
                             radius="md" 
-                            style={{ overflow: 'hidden', flexShrink: 0, height: 250, width: 170, cursor: 'pointer' }}
-                            withBorder
+                            shadow="sm"
+                            style={{ 
+                                overflow: 'hidden', 
+                                flexShrink: 0, 
+                                height: 280, // Трохи збільшив висоту
+                                width: 190, 
+                                cursor: 'pointer',
+                                border: '1px solid var(--mantine-color-default-border)'
+                            }}
                         >
                             <Image 
                                 src={`https://image.tmdb.org/t/p/w300${img.file_path}`} 

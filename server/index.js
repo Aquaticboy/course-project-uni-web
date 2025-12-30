@@ -159,53 +159,65 @@ app.get("/getFeaturedMovies", async (req, res) => {
 });
 
 
-// Новий ендпоінт: Отримання деталей за TMDB ID (швидше і простіше)
+
+
+
+// Отримання деталей фільму за ID + Watch Providers
 app.get('/movieInfoByID/:id', async (req, res) => {
     const { id } = req.params;
 
     try {
         const detailsUrl = new URL(`${TMDB_BASE_URL}/movie/${id}`);
-        
-        // 1. Основна мова (для тексту, назви, опису)
         detailsUrl.searchParams.set('language', 'uk-UA');
-        
-        // 2. ВАЖЛИВО: Дозволяємо картинки англійською та без мови (для Галереї)
-        // 'null' - це картинки без тексту (чисті фони), 'en' - англійські, 'uk' - українські
-        detailsUrl.searchParams.set('include_image_language', 'uk,en,null'); 
-        
-        // 3. Додаємо це для відео, щоб знаходило англ. трейлери, якщо немає укр.
-        detailsUrl.searchParams.set('include_video_language', 'uk,en'); 
-
-        // 4. Підключаємо додаткові блоки
-        detailsUrl.searchParams.set('append_to_response', 'credits,videos,images,similar');
+        detailsUrl.searchParams.set('include_image_language', 'uk,en,null');
+        detailsUrl.searchParams.set('include_video_language', 'uk,en');
+        detailsUrl.searchParams.set(
+            'append_to_response',
+            'credits,videos,images,similar,watch/providers'
+        );
 
         const response = await fetch(detailsUrl, getFetchOptions());
-
-        if (!response.ok) {
-            if (response.status === 404) {
-                return res.status(404).json({ error: 'Фільм не знайдено' });
-            }
-            throw new Error(`TMDB Error: ${response.status}`);
-        }
+        if (!response.ok) throw new Error('TMDB error');
 
         const data = await response.json();
 
-        // Форматуємо головні картинки
-        data.poster_full_url = data.poster_path 
-            ? `https://image.tmdb.org/t/p/w500${data.poster_path}` 
+        // Повні URL картинок
+        data.poster_full_url = data.poster_path
+            ? `https://image.tmdb.org/t/p/w500${data.poster_path}`
             : null;
-        
-        data.backdrop_full_url = data.backdrop_path 
-            ? `https://image.tmdb.org/t/p/original${data.backdrop_path}` 
+
+        data.backdrop_full_url = data.backdrop_path
+            ? `https://image.tmdb.org/t/p/original${data.backdrop_path}`
             : null;
+
+        // --- WATCH PROVIDERS ---
+        const providersByCountry = data['watch/providers']?.results || {};
+
+        // Пріоритет регіонів
+        const regionPriority = ['UA', 'PL', 'US'];
+        let selectedProviders = null;
+
+        for (const region of regionPriority) {
+            if (providersByCountry[region]) {
+                selectedProviders = {
+                    ...providersByCountry[region],
+                    region,
+                };
+                break;
+            }
+        }
+
+        data.watch_providers = selectedProviders;
+        delete data['watch/providers'];
 
         res.json(data);
 
-    } catch (error) {
-        console.error('Server Error:', error.message);
+    } catch (err) {
+        console.error(err);
         res.status(500).json({ error: 'Не вдалося отримати дані фільму' });
     }
 });
+
 
 
 // Отримання даних про актора
