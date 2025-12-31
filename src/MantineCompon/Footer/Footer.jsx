@@ -1,5 +1,5 @@
 import { Container, Group, Text, Anchor } from '@mantine/core';
-import { IconBrandGithub, IconBrandInstagram } from '@tabler/icons-react';
+import { IconBrandGithub } from '@tabler/icons-react';
 
 const Footer = () => {
   return (
@@ -11,8 +11,7 @@ const Footer = () => {
           </Text>
 
           <Group gap="xs">
-            <Anchor href="#" c="dimmed"><IconBrandGithub size={20} /></Anchor>
-            <Anchor href="#" c="dimmed"><IconBrandInstagram size={20} /></Anchor>
+            <Anchor href="https://github.com/Aquaticboy/course-project-uni-web" c="dimmed"><IconBrandGithub size={20} /></Anchor>
           </Group>
         </Group>
       </Container>
