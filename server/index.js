@@ -734,7 +734,7 @@ app.delete('/friends/remove/:relationId', authenticateToken, (req, res) => {
 
 
 
-// Допоміжна функція для налаштувань запиту (щоб не дублювати код)
+// Допоміжна функція для налаштувань запиту
 const getFetchOptions = () => ({
     method: 'GET',
     headers: {
@@ -744,7 +744,6 @@ const getFetchOptions = () => ({
 });
 
 
-// --- API ENDPOINTS ---
 
 // 1. Отримати список популярних (Featured) фільмів
 app.get("/getFeaturedMovies", async (req, res) => {
@@ -891,15 +890,6 @@ app.get('/actor/:id', async (req, res) => {
 
 
 
-
-
-
-
-
-
-
-
-
 // Пошукова сторінка фільмів
 // 1. Ендпоінт для отримання жанрів
 app.get('/genres', async (req, res) => {
@@ -970,72 +960,6 @@ app.get('/movies', async (req, res) => {
         res.status(500).json({ error: 'Помилка пошуку фільмів' });
     }
 });
-
-
-
-
-
-
-
-
-
-
-
-// Google Books API usage
-// // Ендпоінт для пошуку книг
-// app.get('/books/search', async (req, res) => {
-//     const { query, page = 0 } = req.query;
-    
-//     if (!query) {
-//         return res.json({ items: [] });
-//     }
-
-//     try {
-//         // Google Books API: startIndex - це зміщення (пагінація)
-//         // maxResults - максимум 40
-//         const startIndex = page * 20; 
-//         const url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&startIndex=${startIndex}&maxResults=20&key=${GOOGLE_BOOKS_API_KEY}&langRestrict=uk`;
-
-//         const response = await fetch(url);
-//         const data = await response.json();
-
-//         if (!data.items) {
-//             return res.json({ results: [] });
-//         }
-
-//         // Форматуємо дані, щоб вони були схожі на структуру фільмів (для зручності фронтенду)
-//         const formattedBooks = data.items.map(book => {
-//             const info = book.volumeInfo;
-            
-//             // Витягуємо картинку (іноді Google дає http, міняємо на https)
-//             let image = info.imageLinks?.thumbnail || info.imageLinks?.smallThumbnail || null;
-//             if (image) image = image.replace('http://', 'https://');
-
-//             return {
-//                 id: book.id,
-//                 title: info.title,
-//                 authors: info.authors || ['Невідомий автор'],
-//                 description: info.description || 'Опис відсутній.',
-//                 release_date: info.publishedDate,
-//                 poster_full_url: image, // Використовуємо ту ж назву поля, що і у фільмів, щоб перевикористати BadgeCard!
-//                 rating: info.averageRating || 0,
-//                 rating_count: info.ratingsCount || 0,
-//                 page_count: info.pageCount,
-//                 categories: info.categories || []
-//             };
-//         });
-
-//         res.json({ 
-//             results: formattedBooks, 
-//             total_results: data.totalItems 
-//         });
-
-//     } catch (error) {
-//         console.error('Books Search Error:', error);
-//         res.status(500).json({ error: 'Помилка пошуку книг' });
-//     }
-// });
-
 
 
 // Ендпоінт для "Популярних книг" на головну (шукаємо, наприклад, популярну художню літературу)

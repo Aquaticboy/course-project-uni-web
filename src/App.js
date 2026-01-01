@@ -28,6 +28,8 @@ import "@mantine/core/styles.css";
 import "@mantine/carousel/styles.css";
 import { createTheme, MantineProvider, Container } from "@mantine/core";
 
+import ScrollToTop from './ScrollToTop';
+
 const theme = createTheme({
   primaryColor: 'orange', 
   fontFamily: 'Verdana, sans-serif',
@@ -126,6 +128,7 @@ function App() {
     <MantineProvider theme={theme} defaultColorScheme="light">
       <AuthProvider>
         <Router>
+          <ScrollToTop />
           <AppContent />
         </Router>
       </AuthProvider>

@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Button } from '@mantine/core';
-import { IconUserPlus, IconCheck, IconClock, IconUserCheck } from '@tabler/icons-react';
+import { Button, Modal, Text, Group } from '@mantine/core'; // Додали Modal, Text, Group
+import { useDisclosure } from '@mantine/hooks'; // Хук для модалки
+import { IconUserPlus, IconClock, IconUserCheck, IconLogin } from '@tabler/icons-react'; // Додали IconLogin
+import { Link } from 'react-router-dom'; // Для посилання на вхід
 import { useAuth } from '../../Context/AuthContext';
 
 const FriendButton = ({ targetUserId }) => {
@@ -8,10 +10,12 @@ const FriendButton = ({ targetUserId }) => {
     const [status, setStatus] = useState('loading'); // 'none', 'friends', 'request_sent', 'request_received'
     const [loading, setLoading] = useState(false);
 
+    // Хук для керування модальним вікном
+    const [opened, { open, close }] = useDisclosure(false);
+
     // Функція перевірки статусу
     const checkStatus = async () => {
         if (!user) return;
-        // Не робимо запит, якщо це ми самі
         if (user.id == targetUserId) return;
 
         try {
@@ -26,7 +30,6 @@ const FriendButton = ({ targetUserId }) => {
         }
     };
 
-    // 1. ХУКИ МАЮТЬ БУТИ ТУТ (до будь-яких return)
     useEffect(() => {
         if (user) {
             checkStatus();
@@ -34,7 +37,12 @@ const FriendButton = ({ targetUserId }) => {
     }, [user, targetUserId]);
 
     const sendRequest = async () => {
-        if (!user) return alert('Увійдіть, щоб додавати друзів');
+        // ЯКЩО НЕ ЗАЛОГІНЕНИЙ -> ВІДКРИВАЄМО МОДАЛКУ
+        if (!user) {
+            open();
+            return;
+        }
+
         setLoading(true);
         try {
             const token = localStorage.getItem('token');
@@ -56,10 +64,10 @@ const FriendButton = ({ targetUserId }) => {
         }
     };
 
-    // 2. ПЕРЕВІРКА "ЧИ ЦЕ Я" (Тільки ПІСЛЯ всіх хуків)
+    // ПЕРЕВІРКА "ЧИ ЦЕ Я"
     if (user && user.id == targetUserId) return null;
 
-    // 3. РЕНДЕР КНОПОК
+    // РЕНДЕР КНОПОК ЗАЛЕЖНО ВІД СТАТУСУ
     if (status === 'friends') {
         return <Button variant="light" color="green" leftSection={<IconUserCheck size={18} />}>Ваш друг</Button>;
     }
@@ -67,20 +75,51 @@ const FriendButton = ({ targetUserId }) => {
         return <Button variant="light" color="gray" leftSection={<IconClock size={18} />}>Запит надіслано</Button>;
     }
     if (status === 'request_received') {
-        // Тут можна додати логіку прийняття запиту в майбутньому
         return <Button variant="light" color="blue">Прийняти запит</Button>;
     }
 
+    // КНОПКА "ДОДАТИ" + МОДАЛКА
     return (
-        <Button 
-            onClick={sendRequest} 
-            loading={loading}
-            color="orange"
-            variant="outline"
-            leftSection={<IconUserPlus size={18} />}
-        >
-            Додати в друзі
-        </Button>
+        <>
+            {/* МОДАЛЬНЕ ВІКНО ПОПЕРЕДЖЕННЯ */}
+            <Modal 
+                opened={opened} 
+                onClose={close} 
+                title="Потрібна авторизація" 
+                centered
+                radius="md"
+            >
+                <Text size="sm" mb="lg">
+                    Щоб додавати друзів, вам потрібно увійти у свій акаунт.
+                </Text>
+
+                <Group justify="flex-end">
+                    <Button variant="default" onClick={close}>
+                        Скасувати
+                    </Button>
+                    <Button 
+                        component={Link} 
+                        to="/auth" 
+                        color="orange" 
+                        leftSection={<IconLogin size={18} />}
+                        onClick={close}
+                    >
+                        Увійти
+                    </Button>
+                </Group>
+            </Modal>
+
+            {/* ОСНОВНА КНОПКА */}
+            <Button 
+                onClick={sendRequest} 
+                loading={loading}
+                color="orange"
+                variant="outline"
+                leftSection={<IconUserPlus size={18} />}
+            >
+                Додати в друзі
+            </Button>
+        </>
     );
 };
 

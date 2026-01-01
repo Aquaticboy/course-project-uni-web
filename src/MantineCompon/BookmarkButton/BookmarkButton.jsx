@@ -1,23 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { ActionIcon, Tooltip } from '@mantine/core';
-import { IconHeart, IconHeartFilled } from '@tabler/icons-react';
-import { useAuth } from '../../Context/AuthContext'; // Перевір шлях!
+import { ActionIcon, Tooltip, Modal, Button, Text, Group } from '@mantine/core'; // Додали Modal, Button, Text, Group
+import { useDisclosure } from '@mantine/hooks'; // Хук для керування модалкою
+import { IconHeart, IconHeartFilled, IconLogin } from '@tabler/icons-react';
+import { useAuth } from '../../Context/AuthContext';
+import { Link } from 'react-router-dom'; // Для посилання на сторінку входу
 
-// item - об'єкт фільму або книги
-// type - 'movie' або 'book'
 const BookmarkButton = ({ item, type }) => {
     const { user } = useAuth();
     const [isBookmarked, setIsBookmarked] = useState(false);
     const [loading, setLoading] = useState(false);
+    
+    // Хук для відкриття/закриття модального вікна
+    const [opened, { open, close }] = useDisclosure(false);
 
-    // Отримуємо ID та Title залежно від того, це фільм чи книга
     const contentId = item.id; 
     const title = item.title || item.original_title || item.name;
-    const poster = item.poster_path || item.cover_i; // poster_path для TMDB, cover_i для книг (якщо буде)
+    const poster = item.poster_path || item.cover_i;
 
-    // 1. Перевіряємо при завантаженні, чи вже лайкнуто
     useEffect(() => {
-        if (!user) return; // Якщо не залогінений - не перевіряємо
+        if (!user) return;
 
         const checkStatus = async () => {
             try {
@@ -36,10 +37,10 @@ const BookmarkButton = ({ item, type }) => {
         checkStatus();
     }, [user, type, contentId]);
 
-    // 2. Обробка кліку
     const handleToggle = async () => {
+        // ЯКЩО НЕ ЗАЛОГІНЕНИЙ -> ВІДКРИВАЄМО КРАСИВЕ ВІКНО ЗАМІСТЬ ALERT
         if (!user) {
-            alert("Будь ласка, увійдіть в акаунт, щоб додавати в закладки!");
+            open(); // Відкриваємо модалку
             return;
         }
 
@@ -48,14 +49,12 @@ const BookmarkButton = ({ item, type }) => {
 
         try {
             if (isBookmarked) {
-                // ВИДАЛЕННЯ
                 await fetch(`http://localhost:3001/bookmarks/${type}/${contentId}`, {
                     method: 'DELETE',
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 setIsBookmarked(false);
             } else {
-                // ДОДАВАННЯ
                 await fetch('http://localhost:3001/bookmarks', {
                     method: 'POST',
                     headers: { 
@@ -79,18 +78,49 @@ const BookmarkButton = ({ item, type }) => {
     };
 
     return (
-        <Tooltip label={isBookmarked ? "Видалити з вибраного" : "Додати у вибране"}>
-            <ActionIcon 
-                variant={isBookmarked ? "filled" : "light"} 
-                color="red" 
-                size="xl" 
-                radius="md" 
-                onClick={handleToggle}
-                loading={loading}
+        <>
+            {/* МОДАЛЬНЕ ВІКНО ПОПЕРЕДЖЕННЯ */}
+            <Modal 
+                opened={opened} 
+                onClose={close} 
+                title="Потрібна авторизація" 
+                centered
+                radius="md"
             >
-                {isBookmarked ? <IconHeartFilled size={24} /> : <IconHeart size={24} />}
-            </ActionIcon>
-        </Tooltip>
+                <Text size="sm" mb="lg">
+                    Щоб додавати фільми та книги до "Вибраного", вам потрібно увійти у свій акаунт.
+                </Text>
+
+                <Group justify="flex-end">
+                    <Button variant="default" onClick={close}>
+                        Скасувати
+                    </Button>
+                    <Button 
+                        component={Link} 
+                        to="/auth" 
+                        color="orange" 
+                        leftSection={<IconLogin size={18} />}
+                        onClick={close}
+                    >
+                        Увійти
+                    </Button>
+                </Group>
+            </Modal>
+
+            {/* САМА КНОПКА */}
+            <Tooltip label={isBookmarked ? "Видалити з вибраного" : "Додати у вибране"}>
+                <ActionIcon 
+                    variant={isBookmarked ? "filled" : "light"} 
+                    color="red" 
+                    size="xl" 
+                    radius="md" 
+                    onClick={handleToggle}
+                    loading={loading}
+                >
+                    {isBookmarked ? <IconHeartFilled size={24} /> : <IconHeart size={24} />}
+                </ActionIcon>
+            </Tooltip>
+        </>
     );
 };
 
